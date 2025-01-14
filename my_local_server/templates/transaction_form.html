@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Transaction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .form-container {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .row {
+            display: flex;
+            gap: 20px;
+        }
+
+        .col {
+            flex: 1;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .view-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #008CBA;
+        }
+
+        #customerSearch {
+            position: relative;
+        }
+
+        #customerResults {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+
+        .customer-item {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .customer-item:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="view-button">View Data</a>
+    
+    <div class="form-container">
+        <h2>Add New Transaction</h2>
+        <form id="transactionForm" onsubmit="submitTransaction(event)">
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="transaction_date">Transaction Date</label>
+                        <input type="date" id="transaction_date" name="transaction_date" required>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="transaction_type">Transaction Type</label>
+                        <select id="transaction_type" name="transaction_type" required onchange="updateCategories()">
+                            <option value="">Select Type</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" name="category" required>
+                            <option value="">Select Category</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="sub_category">Sub Category</label>
+                        <input type="text" id="sub_category" name="sub_category">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" name="amount" step="0.01" required onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="tax_amount">Tax Amount</label>
+                        <input type="number" id="tax_amount" name="tax_amount" step="0.01" value="0" onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="total_amount">Total Amount</label>
+                        <input type="number" id="total_amount" name="total_amount" step="0.01" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="payment_mode">Payment Mode</label>
+                        <select id="payment_mode" name="payment_mode" required>
+                            <option value="">Select Payment Mode</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="payment_status">Payment Status</label>
+                        <select id="payment_status" name="payment_status" required>
+                            <option value="">Select Status</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="reference_no">Reference No</label>
+                        <input type="text" id="reference_no" name="reference_no">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group" id="customerSearch">
+                        <label for="customer_search">Customer</label>
+                        <input type="text" id="customer_search" placeholder="Search customer...">
+                        <input type="hidden" id="customer_id" name="customer_id">
+                        <div id="customerResults"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="order_no">Order No</label>
+                        <input type="text" id="order_no" name="order_no">
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="vendor_name">Vendor Name</label>
+                        <input type="text" id="vendor_name" name="vendor_name">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+
+            <button type="submit">Add Transaction</button>
+        </form>
+    </div>
+
+    <!-- Add loading overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Saving...</div>
+    </div>
+
+    <script>
+        // Load constants from backend
+        async function loadConstants() {
+            const response = await fetch('/api/constants');
+            const constants = await response.json();
+            
+            populateSelect('transaction_type', constants.TRANSACTION_TYPES);
+            populateSelect('payment_mode', constants.PAYMENT_MODES);
+            populateSelect('payment_status', constants.PAYMENT_STATUSES);
+            
+            window.INCOME_CATEGORIES = constants.INCOME_CATEGORIES;
+            window.EXPENSE_CATEGORIES = constants.EXPENSE_CATEGORIES;
+        }
+
+        function populateSelect(elementId, options) {
+            const select = document.getElementById(elementId);
+            select.innerHTML = '<option value="">Select</option>';
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                select.appendChild(opt);
+            });
+        }
+
+        function updateCategories() {
+            const type = document.getElementById('transaction_type').value;
+            const categories = type === 'Income' ? window.INCOME_CATEGORIES : window.EXPENSE_CATEGORIES;
+            populateSelect('category', categories);
+        }
+
+        function calculateTotal() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const tax = parseFloat(document.getElementById('tax_amount').value) || 0;
+            document.getElementById('total_amount').value = (amount + tax).toFixed(2);
+        }
+
+        // Customer search functionality
+        let searchTimeout;
+        document.getElementById('customer_search').addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const searchText = e.target.value;
+            
+            if (searchText.length < 2) {
+                document.getElementById('customerResults').style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                const response = await fetch(`/api/customers/search?q=${searchText}`);
+                const customers = await response.json();
+                
+                const resultsDiv = document.getElementById('customerResults');
+                resultsDiv.innerHTML = '';
+                resultsDiv.style.display = customers.length ? 'block' : 'none';
+
+                customers.forEach(customer => {
+                    const div = document.createElement('div');
+                    div.className = 'customer-item';
+                    div.textContent = `${customer.name} (${customer.customer_code})`;
+                    div.onclick = () => {
+                        document.getElementById('customer_search').value = customer.name;
+                        document.getElementById('customer_id').value = customer.id;
+                        resultsDiv.style.display = 'none';
+                    };
+                    resultsDiv.appendChild(div);
+                });
+            }, 300);
+        });
+
+        // Add loading utility functions
+        function showLoading(message = 'Saving...') {
+            const overlay = document.getElementById('loading-overlay');
+            const text = overlay.querySelector('.loading-text');
+            text.textContent = message;
+            overlay.classList.add('active');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('active');
+        }
+
+        // Update form submission
+        document.getElementById('transactionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            showLoading('Saving transaction...');
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            fetch('/api/transactions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                alert('Transaction saved successfully!');
+                this.reset();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to save transaction: ' + error.message);
+            })
+            .finally(() => {
+                hideLoading();
+            });
+        });
+
+        // Load constants when page loads
+        loadConstants();
+    </script>
+</body>
+</html> 

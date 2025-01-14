@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Customer Engagement</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .message-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .message {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+
+        .sent {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+
+        .received {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+
+        .templates {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .template-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .template-card:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Customer Engagement</h1>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Send Message</h2>
+            <div class="form-group">
+                <label for="customerSearch">Customer</label>
+                <input type="text" id="customerSearch" placeholder="Search customer...">
+                <div id="customerResults"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="messageTemplate">Message Template</label>
+                <select id="messageTemplate">
+                    <option value="">Select template...</option>
+                    <option value="order_confirmation">Order Confirmation</option>
+                    <option value="delivery_status">Delivery Status</option>
+                    <option value="payment_reminder">Payment Reminder</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" rows="4"></textarea>
+            </div>
+            
+            <button onclick="sendMessage()">Send Message</button>
+        </div>
+        
+        <div class="card">
+            <h2>Bulk Message</h2>
+            <div class="form-group">
+                <label for="filterType">Filter Customers</label>
+                <select id="filterType">
+                    <option value="all">All Customers</option>
+                    <option value="inactive">Inactive Customers</option>
+                    <option value="regular">Regular Customers</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="bulkMessage">Message</label>
+                <textarea id="bulkMessage" rows="4"></textarea>
+            </div>
+            
+            <button onclick="sendBulkMessage()">Send Bulk Message</button>
+        </div>
+    </div>
+
+    <script>
+        // Customer search functionality
+        let searchTimeout;
+        document.getElementById('customerSearch').addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const searchText = e.target.value;
+            
+            if (searchText.length < 2) {
+                document.getElementById('customerResults').style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                const response = await fetch(`/api/customers/search?q=${searchText}`);
+                const customers = await response.json();
+                
+                const resultsDiv = document.getElementById('customerResults');
+                resultsDiv.innerHTML = '';
+                resultsDiv.style.display = customers.length ? 'block' : 'none';
+
+                customers.forEach(customer => {
+                    const div = document.createElement('div');
+                    div.className = 'customer-item';
+                    div.textContent = `${customer.name} (${customer.phone})`;
+                    div.onclick = () => {
+                        document.getElementById('customerSearch').value = customer.name;
+                        selectedCustomer = customer;
+                        resultsDiv.style.display = 'none';
+                    };
+                    resultsDiv.appendChild(div);
+                });
+            }, 300);
+        });
+
+        // Send individual message
+        async function sendMessage() {
+            if (!selectedCustomer || !selectedCustomer.phone) {
+                alert('Please select a customer with a valid phone number');
+                return;
+            }
+
+            const message = document.getElementById('message').value;
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/customer-engagement/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: selectedCustomer.phone,
+                        message: message
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Message sent successfully!');
+                    document.getElementById('message').value = '';
+                } else {
+                    alert('Error sending message: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error sending message: ' + error.message);
+            }
+        }
+
+        // Send bulk message
+        async function sendBulkMessage() {
+            const message = document.getElementById('bulkMessage').value;
+            const filterType = document.getElementById('filterType').value;
+            
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/customer-engagement/send-bulk-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        filter: {
+                            type: filterType,
+                            last_order_days: filterType === 'inactive' ? 30 : null,
+                            min_orders: filterType === 'regular' ? 3 : null
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert(`Messages sent successfully to ${result.results.length} customers!`);
+                    document.getElementById('bulkMessage').value = '';
+                } else {
+                    alert('Error sending messages: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error sending messages: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 

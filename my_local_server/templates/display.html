@@ -1,0 +1,554 @@
+<div class="header">
+    <h1>Laundry Management System</h1>
+    <div class="header-buttons">
+        {% if session.role == 'admin' %}
+        <a href="/dashboard" class="upload-btn">Dashboard</a>
+        <a href="/admin" class="upload-btn">Admin Panel</a>
+        {% endif %}
+        <a href="/transaction" class="upload-btn">Add Transaction</a>
+        <a href="/upload" class="upload-btn" style="margin-left: 10px;">Upload Data</a>
+        <a href="/logout" class="upload-btn" style="margin-left: 10px;">Logout</a>
+    </div>
+</div>
+
+<div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading...</div>
+</div>
+
+<div id="tables-container">
+    <div class="tab-buttons">
+        <button class="tab-btn active" onclick="showTable('customers')">Customers</button>
+        <button class="tab-btn" onclick="showTable('orders')">Orders</button>
+        <button class="tab-btn" onclick="showTable('transactions')">Transactions</button>
+    </div>
+
+    <div id="customers-section" class="table-section active">
+        <h2>Customers</h2>
+        <div class="search-box">
+            <input type="text" id="customerSearch" placeholder="Search by customer name..." onkeyup="filterCustomers()">
+        </div>
+        <table id="customersTable" border="1">
+            <thead>
+                <tr>
+                    <th>Customer Code</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Area Location</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="orders-section" class="table-section">
+        <h2>Orders</h2>
+        <div class="filters-container">
+            <div class="search-box">
+                <input type="text" id="orderNoSearch" placeholder="Search by order number..." onkeyup="filterOrders()">
+            </div>
+            <div class="search-box">
+                <input type="text" id="orderSearch" placeholder="Search by customer name..." onkeyup="filterOrders()">
+            </div>
+            <div class="date-filters">
+                <input type="date" id="startDate" onchange="filterOrders()">
+                <span>to</span>
+                <input type="date" id="endDate" onchange="filterOrders()">
+            </div>
+            <div class="status-filter">
+                <select id="statusFilter" onchange="filterOrders()">
+                    <option value="">All Statuses</option>
+                    <option value="Unprocessed">Unprocessed</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Ready">Ready</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+        </div>
+        <table id="ordersTable" border="1">
+            <thead>
+                <tr>
+                    <th>Order No</th>
+                    <th>Customer</th>
+                    <th>Order Date</th>
+                    <th>Due Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="transactions-section" class="table-section">
+        <h2>Transactions</h2>
+        <div class="filters-container">
+            <div class="search-box">
+                <input type="text" id="transactionSearch" placeholder="Search by order number..." onkeyup="filterTransactions()">
+            </div>
+            <div class="date-filters">
+                <input type="date" id="transStartDate" onchange="filterTransactions()">
+                <span>to</span>
+                <input type="date" id="transEndDate" onchange="filterTransactions()">
+            </div>
+        </div>
+        <table id="transactionsTable" border="1">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Order No</th>
+                    <th>Amount</th>
+                    <th>Payment Mode</th>
+                    <th>Reference No</th>
+                    <th>Location</th>
+                    <th>Created By</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function showTable(tableType) {
+    // Hide all sections
+    document.querySelectorAll('.table-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected section and activate button
+    document.getElementById(`${tableType}-section`).classList.add('active');
+    document.querySelector(`button[onclick="showTable('${tableType}')"]`).classList.add('active');
+
+    // Fetch data based on active tab
+    if (tableType === 'customers') {
+        fetchCustomers();
+    } else if (tableType === 'orders') {
+        fetchOrders();
+    } else if (tableType === 'transactions') {
+        fetchTransactions();
+    }
+}
+
+// Add these filter functions
+function filterCustomers() {
+    const searchText = document.getElementById('customerSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#customersTable tbody tr');
+    
+    rows.forEach(row => {
+        const customerName = row.children[1].textContent.toLowerCase(); // Index 1 is Name column
+        row.style.display = customerName.includes(searchText) ? '' : 'none';
+    });
+}
+
+function filterOrders() {
+    const orderNoText = document.getElementById('orderNoSearch').value.toLowerCase();
+    const customerText = document.getElementById('orderSearch').value.toLowerCase();
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    const rows = document.querySelectorAll('#ordersTable tbody tr');
+    
+    rows.forEach(row => {
+        const orderNo = row.children[0].textContent.toLowerCase();
+        const customerName = row.children[1].textContent.toLowerCase();
+        const orderDate = new Date(row.children[2].getAttribute('data-date'));
+        const status = row.children[5].textContent;
+        
+        let showRow = true;
+        
+        // Check order number
+        if (orderNoText && !orderNo.includes(orderNoText)) {
+            showRow = false;
+        }
+        
+        // Check customer name
+        if (customerText && !customerName.includes(customerText)) {
+            showRow = false;
+        }
+        
+        // Check date range
+        if (startDate && new Date(startDate) > orderDate) {
+            showRow = false;
+        }
+        if (endDate && new Date(endDate) < orderDate) {
+            showRow = false;
+        }
+        
+        // Check status
+        if (statusFilter && status !== statusFilter) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+
+// Update your existing fetch functions to store data globally
+let customersData = [];
+let ordersData = [];
+
+function fetchCustomers() {
+    showLoading('Loading customers...');
+    fetch('/customers')
+        .then(response => response.json())
+        .then(customers => {
+            customersData = customers;
+            displayCustomers(customers);
+        })
+        .catch(error => {
+            console.error('Error fetching customers:', error);
+            alert('Failed to load customers. Please try again.');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+function displayCustomers(customers) {
+    const tbody = document.querySelector('#customersTable tbody');
+    tbody.innerHTML = '';
+    customers.forEach(customer => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${customer.customer_code}</td>
+            <td>${customer.name}</td>
+            <td>${customer.phone || '-'}</td>
+            <td>${customer.address || '-'}</td>
+            <td>${customer.area_location || '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function fetchOrders() {
+    showLoading('Loading orders...');
+    fetch('/orders')
+        .then(response => response.json())
+        .then(orders => {
+            ordersData = orders;
+            displayOrders(orders);
+        })
+        .catch(error => {
+            console.error('Error fetching orders:', error);
+            alert('Failed to load orders. Please try again.');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+function displayOrders(orders) {
+    const tbody = document.querySelector('#ordersTable tbody');
+    tbody.innerHTML = '';
+    orders.forEach(order => {
+        const row = document.createElement('tr');
+        const orderDate = new Date(order.order_date);
+        const dueDate = order.due_date ? new Date(order.due_date).toLocaleDateString() : '-';
+        row.innerHTML = `
+            <td>${order.order_no}</td>
+            <td>${order.customer_name || '-'}</td>
+            <td data-date="${order.order_date}">${orderDate.toLocaleDateString()}</td>
+            <td>${dueDate}</td>
+            <td>₹${order.net_amount || order.gross_amount || 0}</td>
+            <td>${order.order_status || 'Unprocessed'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Add transaction filter function
+function filterTransactions() {
+    const searchText = document.getElementById('transactionSearch').value.toLowerCase();
+    const startDate = document.getElementById('transStartDate').value;
+    const endDate = document.getElementById('transEndDate').value;
+    
+    const rows = document.querySelectorAll('#transactionsTable tbody tr');
+    
+    rows.forEach(row => {
+        const orderNo = row.children[1].textContent.toLowerCase();
+        const transDate = new Date(row.children[0].getAttribute('data-date'));
+        
+        let showRow = true;
+        
+        // Check order number
+        if (searchText && !orderNo.includes(searchText)) {
+            showRow = false;
+        }
+        
+        // Check date range
+        if (startDate && new Date(startDate) > transDate) {
+            showRow = false;
+        }
+        if (endDate && new Date(endDate) < transDate) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+}
+
+// Update transactions fetch function to store data globally
+let transactionsData = [];
+
+function fetchTransactions() {
+    showLoading('Loading transactions...');
+    fetch('/transactions')
+        .then(response => response.json())
+        .then(transactions => {
+            transactionsData = transactions;
+            displayTransactions(transactions);
+        })
+        .catch(error => {
+            console.error('Error fetching transactions:', error);
+            alert('Failed to load transactions. Please try again.');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+function displayTransactions(transactions) {
+    const tbody = document.querySelector('#transactionsTable tbody');
+    tbody.innerHTML = '';
+    transactions.forEach(txn => {
+        const row = document.createElement('tr');
+        const date = new Date(txn.transaction_date);
+        row.innerHTML = `
+            <td data-date="${txn.transaction_date}">${date.toLocaleDateString()}</td>
+            <td>${txn.order_no || '-'}</td>
+            <td>₹${txn.amount.toFixed(2)}</td>
+            <td>${txn.payment_mode || '-'}</td>
+            <td>${txn.reference_no || '-'}</td>
+            <td>${txn.notes || '-'}</td>
+            <td>${txn.created_by || '-'}</td>
+            <td><span class="badge ${txn.source}">${txn.source}</span></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Initial data load
+fetchCustomers();
+
+// Add these loading utility functions
+function showLoading(message = 'Loading...') {
+    const overlay = document.getElementById('loading-overlay');
+    const text = overlay.querySelector('.loading-text');
+    text.textContent = message;
+    overlay.classList.add('active');
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.remove('active');
+}
+</script>
+
+<style>
+#tables-container {
+    margin-top: 30px;
+}
+
+.tab-buttons {
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #f2f2f2;
+    border: none;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+.tab-btn.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.table-section {
+    display: none;
+}
+
+.table-section.active {
+    display: block;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 30px;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.header h1 {
+    margin: 0;
+}
+
+.upload-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.upload-btn:hover {
+    background-color: #45a049;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.badge.manual {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.badge.csv {
+    background-color: #2196F3;
+    color: white;
+}
+
+.search-box {
+    margin-bottom: 20px;
+}
+
+.search-box input {
+    width: 300px;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.filters-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.date-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-filters input[type="date"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.status-filter select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.status-filter select:focus,
+.date-filters input[type="date"]:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+.loading-text {
+    color: #4CAF50;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+
+
+
