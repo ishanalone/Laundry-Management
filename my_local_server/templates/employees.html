@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employees</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .back-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .back-btn:hover {
+            background-color: #5a6268;
+        }
+
+        .add-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .filters-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .status-active {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .edit-btn {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* Add Font Awesome for icons */
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <button class="back-btn" onclick="window.location.href='/'">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <h1>Employees</h1>
+            </div>
+            <button class="add-btn" onclick="showAddEmployeeForm()">Add Employee</button>
+        </div>
+
+        <div class="filters-container">
+            <div class="search-box">
+                <input type="text" id="employeeSearch" placeholder="Search by name or code..." onkeyup="filterEmployees()">
+            </div>
+            <div class="status-filter">
+                <select id="statusFilter" onchange="filterEmployees()">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+        <table id="employeesTable">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>PAN</th>
+                    <th>Aadhar</th>
+                    <th>Designation</th>
+                    <th>Department</th>
+                    <th>Join Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="employeeFormModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add Employee</h2>
+            <form id="employeeForm" onsubmit="submitEmployee(event)">
+                <div class="form-group">
+                    <label for="employee_code">Employee Code*</label>
+                    <input type="text" id="employee_code" name="employee_code" required>
+                </div>
+                <div class="form-group">
+                    <label for="name">Name*</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="pan_number">PAN Number</label>
+                    <input type="text" id="pan_number" name="pan_number" pattern="[A-Z]{5}[0-9]{4}[A-Z]" title="Enter valid PAN number (e.g., ABCDE1234F)">
+                </div>
+                <div class="form-group">
+                    <label for="aadhar_number">Aadhar Number</label>
+                    <input type="text" id="aadhar_number" name="aadhar_number" pattern="\d{12}" title="Enter 12 digit Aadhar number">
+                </div>
+                <div class="form-group">
+                    <label for="designation">Designation</label>
+                    <input type="text" id="designation" name="designation">
+                </div>
+                <div class="form-group">
+                    <label for="department">Department</label>
+                    <input type="text" id="department" name="department">
+                </div>
+                <div class="form-group">
+                    <label for="join_date">Join Date</label>
+                    <input type="date" id="join_date" name="join_date">
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">Save Employee</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function fetchEmployees() {
+            fetch('/api/employees')
+                .then(response => response.json())
+                .then(employees => {
+                    displayEmployees(employees);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to load employees');
+                });
+        }
+
+        function displayEmployees(employees) {
+            const tbody = document.querySelector('#employeesTable tbody');
+            tbody.innerHTML = '';
+            
+            employees.forEach(emp => {
+                const row = document.createElement('tr');
+                const joinDate = new Date(emp.join_date).toLocaleDateString();
+                
+                // Mask sensitive information
+                const maskedPan = emp.pan_number ? `${emp.pan_number.slice(0, 2)}XXXXX${emp.pan_number.slice(-2)}` : '-';
+                const maskedAadhar = emp.aadhar_number ? `XXXX-XXXX-${emp.aadhar_number.slice(-4)}` : '-';
+                
+                row.innerHTML = `
+                    <td>${emp.employee_code}</td>
+                    <td>${emp.name}</td>
+                    <td>${emp.phone || '-'}</td>
+                    <td>${emp.email || '-'}</td>
+                    <td>${maskedPan}</td>
+                    <td>${maskedAadhar}</td>
+                    <td>${emp.designation || '-'}</td>
+                    <td>${emp.department || '-'}</td>
+                    <td>${joinDate}</td>
+                    <td class="status-${emp.status.toLowerCase()}">${emp.status}</td>
+                    <td>
+                        <button class="action-btn edit-btn" onclick="editEmployee(${emp.id})">Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteEmployee(${emp.id})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterEmployees() {
+            const searchText = document.getElementById('employeeSearch').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('#employeesTable tbody tr');
+            
+            rows.forEach(row => {
+                const code = row.children[0].textContent.toLowerCase();
+                const name = row.children[1].textContent.toLowerCase();
+                const empStatus = row.children[7].textContent;
+                
+                const matchesSearch = code.includes(searchText) || name.includes(searchText);
+                const matchesStatus = !status || empStatus === status;
+                
+                row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+            });
+        }
+
+        // Load employees when page loads
+        fetchEmployees();
+
+        function showAddEmployeeForm() {
+            document.getElementById('employeeFormModal').style.display = 'block';
+        }
+
+        // Close modal when clicking the X or outside the modal
+        document.querySelector('.close').onclick = function() {
+            document.getElementById('employeeFormModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('employeeFormModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function submitEmployee(event) {
+            event.preventDefault();
+            
+            try {
+                const formData = new FormData(event.target);
+                const data = Object.fromEntries(formData.entries());
+                
+                const response = await fetch('/api/employees', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to add employee');
+                }
+                
+                // Close modal and refresh list
+                document.getElementById('employeeFormModal').style.display = 'none';
+                event.target.reset();
+                fetchEmployees();
+                
+                alert('Employee added successfully!');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to add employee: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 

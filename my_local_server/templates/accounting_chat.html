@@ -1,0 +1,345 @@
+<div class="chat-container" id="chatContainer">
+    <div class="chat-header">
+        <h3>Accounting Assistant</h3>
+        <div class="chat-controls">
+            <button class="minimize-btn" onclick="toggleChat()">−</button>
+        </div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="message system">
+            Hello! I'm your accounting assistant. Ask me about:
+            • Daily/Monthly summaries
+            • Balance sheets
+            • Financial insights
+            • Transaction analysis
+            Try: "Show balance between dates" or "Analysis from date to date"
+        </div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="userMessage" placeholder="Ask about your finances...">
+        <input type="date" id="dateInput" style="display: none;">
+        <div class="date-range" id="dateRange" style="display: none;">
+            <input type="date" id="startDate" placeholder="Start Date">
+            <span>to</span>
+            <input type="date" id="endDate" placeholder="End Date">
+        </div>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<style>
+.chat-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2c3e50;
+    color: white;
+    padding: 15px;
+    font-weight: bold;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.message.user {
+    background: #3498db;
+    color: white;
+    align-self: flex-end;
+}
+
+.message.assistant {
+    background: #f0f0f0;
+    color: #333;
+    align-self: flex-start;
+}
+
+.message.system {
+    background: #ecf0f1;
+    color: #34495e;
+    align-self: center;
+    text-align: center;
+    font-style: italic;
+}
+
+.chat-input {
+    padding: 15px;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
+}
+
+.date-range {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+}
+
+.date-range span {
+    color: #666;
+    font-size: 14px;
+}
+
+.date-range input[type="date"] {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    outline: none;
+}
+
+.chat-input input[type="date"] {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    outline: none;
+    flex: 1;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    outline: none;
+}
+
+.chat-input button {
+    padding: 10px 20px;
+    background: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.chat-input button:hover {
+    background: #34495e;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 0.9em;
+}
+
+.chat-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.minimize-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.minimize-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.chat-container.minimized {
+    height: 60px;
+}
+
+.chat-container.minimized .chat-messages,
+.chat-container.minimized .chat-input {
+    display: none;
+}
+</style>
+
+<script>
+const chatMessages = document.getElementById('chatMessages');
+const userInput = document.getElementById('userMessage');
+const dateInput = document.getElementById('dateInput');
+const dateRange = document.getElementById('dateRange');
+const startDate = document.getElementById('startDate');
+const endDate = document.getElementById('endDate');
+
+// Set default dates
+const today = new Date().toISOString().split('T')[0];
+startDate.value = today;
+endDate.value = today;
+dateInput.value = today;
+
+userInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    const needsRange = query.includes('between') || 
+                      query.includes('from') || 
+                      query.includes('range');
+    
+    if (query.includes('balance sheet')) {
+        dateInput.style.display = 'block';
+        dateRange.style.display = 'none';
+    } else if (needsRange) {
+        dateInput.style.display = 'none';
+        dateRange.style.display = 'flex';
+    } else {
+        dateInput.style.display = 'none';
+        dateRange.style.display = 'none';
+    }
+});
+
+function processQuery(query) {
+    const queryLower = query.toLowerCase();
+    const needsRange = queryLower.includes('between') || 
+                      queryLower.includes('from') || 
+                      queryLower.includes('range');
+    
+    if (queryLower.includes('balance sheet')) {
+        return { 
+            type: 'balance_sheet', 
+            date: dateInput.value 
+        };
+    } else if (needsRange) {
+        return {
+            type: 'daily',
+            start_date: startDate.value,
+            end_date: endDate.value
+        };
+    } else if (queryLower.includes('month')) {
+        return { type: 'monthly', days: 30 };
+    } else if (queryLower.includes('anomaly') || queryLower.includes('unusual')) {
+        return { type: 'anomalies', days: 30 };
+    } else {
+        return { type: 'daily', days: 7 };
+    }
+}
+
+async function sendMessage() {
+    const message = userInput.value.trim();
+    if (!message) return;
+    
+    // Add user message to chat with date context
+    let fullMessage = message;
+    if (dateInput.style.display === 'block') {
+        fullMessage += ` (${dateInput.value})`;
+    } else if (dateRange.style.display === 'flex') {
+        fullMessage += ` (${startDate.value} to ${endDate.value})`;
+    }
+    addMessage(fullMessage, 'user');
+    
+    userInput.value = '';
+    dateInput.style.display = 'none';
+    dateRange.style.display = 'none';
+    
+    // Add loading message
+    addMessage('Processing...', 'system');
+    
+    try {
+        const params = processQuery(message);
+        const queryString = new URLSearchParams(params).toString();
+        const response = await fetch(`/api/accounting/insights?${queryString}`);
+        const data = await response.json();
+        
+        // Remove loading message
+        const loadingMsg = document.querySelector('.message.system:last-child');
+        if (loadingMsg) loadingMsg.remove();
+        
+        // Add response to chat
+        if (data.success) {
+            addMessage(data.insights, 'assistant');
+        } else {
+            addMessage(data.error || 'An error occurred', 'system');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        addMessage('Sorry, something went wrong', 'system');
+    }
+}
+
+function addMessage(message, type) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    
+    if (message.includes('\n')) {
+        messageDiv.innerHTML = `<pre>${message}</pre>`;
+    } else {
+        messageDiv.textContent = message;
+    }
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Handle Enter key
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Validate date range
+endDate.addEventListener('change', function() {
+    if (this.value < startDate.value) {
+        alert('End date cannot be before start date');
+        this.value = startDate.value;
+    }
+});
+
+startDate.addEventListener('change', function() {
+    if (this.value > endDate.value) {
+        endDate.value = this.value;
+    }
+});
+
+function toggleChat() {
+    const container = document.getElementById('chatContainer');
+    const btn = document.querySelector('.minimize-btn');
+    const isMinimized = container.classList.contains('minimized');
+    
+    if (isMinimized) {
+        container.classList.remove('minimized');
+        btn.textContent = '−';
+        localStorage.setItem('chatMinimized', 'false');
+    } else {
+        container.classList.add('minimized');
+        btn.textContent = '+';
+        localStorage.setItem('chatMinimized', 'true');
+    }
+}
+
+// Add this to preserve chat state
+document.addEventListener('DOMContentLoaded', function() {
+    const chatState = localStorage.getItem('chatMinimized');
+    if (chatState === 'true') {
+        toggleChat();
+    }
+});
+</script> 

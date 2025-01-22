@@ -1,120 +1,159 @@
-<div class="header">
-    <h1>Laundry Management System</h1>
-    <div class="header-buttons">
+<body>
+    <!-- Add navigation buttons at the top -->
+    <div class="nav-buttons">
+        <button onclick="showTable('orders')" class="nav-btn">Orders</button>
+        <button onclick="showTable('transactions')" class="nav-btn">Transactions</button>
+        <button onclick="showTable('customers')" class="nav-btn">Customers</button>
+        <button onclick="window.location.href='/employees'" class="nav-btn">Employees</button>
         {% if session.role == 'admin' %}
-        <a href="/dashboard" class="upload-btn">Dashboard</a>
-        <a href="/admin" class="upload-btn">Admin Panel</a>
+        <button onclick="showTable('accounting')" class="nav-btn">Accounting AI</button>
         {% endif %}
-        <a href="/transaction" class="upload-btn">Add Transaction</a>
-        <a href="/upload" class="upload-btn" style="margin-left: 10px;">Upload Data</a>
-        <a href="/logout" class="upload-btn" style="margin-left: 10px;">Logout</a>
-    </div>
-</div>
-
-<div id="loading-overlay" class="loading-overlay">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Loading...</div>
-</div>
-
-<div id="tables-container">
-    <div class="tab-buttons">
-        <button class="tab-btn active" onclick="showTable('customers')">Customers</button>
-        <button class="tab-btn" onclick="showTable('orders')">Orders</button>
-        <button class="tab-btn" onclick="showTable('transactions')">Transactions</button>
     </div>
 
-    <div id="customers-section" class="table-section active">
-        <h2>Customers</h2>
-        <div class="search-box">
-            <input type="text" id="customerSearch" placeholder="Search by customer name..." onkeyup="filterCustomers()">
+    <div class="header">
+        <h1>Laundry Management System</h1>
+        <div class="header-buttons">
+            {% if session.role == 'admin' %}
+            <a href="/dashboard" class="upload-btn">Dashboard</a>
+            <a href="/admin" class="upload-btn">Admin Panel</a>
+            {% endif %}
+            <a href="/transaction" class="upload-btn">Add Transaction</a>
+            <a href="/upload" class="upload-btn" style="margin-left: 10px;">Upload Data</a>
+            <a href="/logout" class="upload-btn" style="margin-left: 10px;">Logout</a>
         </div>
-        <table id="customersTable" border="1">
-            <thead>
-                <tr>
-                    <th>Customer Code</th>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Address</th>
-                    <th>Area Location</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
     </div>
 
-    <div id="orders-section" class="table-section">
-        <h2>Orders</h2>
-        <div class="filters-container">
-            <div class="search-box">
-                <input type="text" id="orderNoSearch" placeholder="Search by order number..." onkeyup="filterOrders()">
-            </div>
-            <div class="search-box">
-                <input type="text" id="orderSearch" placeholder="Search by customer name..." onkeyup="filterOrders()">
-            </div>
-            <div class="date-filters">
-                <input type="date" id="startDate" onchange="filterOrders()">
-                <span>to</span>
-                <input type="date" id="endDate" onchange="filterOrders()">
-            </div>
-            <div class="status-filter">
-                <select id="statusFilter" onchange="filterOrders()">
-                    <option value="">All Statuses</option>
-                    <option value="Unprocessed">Unprocessed</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Processing">Processing</option>
-                    <option value="Ready">Ready</option>
-                    <option value="Delivered">Delivered</option>
-                    <option value="Cancelled">Cancelled</option>
-                </select>
-            </div>
-        </div>
-        <table id="ordersTable" border="1">
-            <thead>
-                <tr>
-                    <th>Order No</th>
-                    <th>Customer</th>
-                    <th>Order Date</th>
-                    <th>Due Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
     </div>
 
-    <div id="transactions-section" class="table-section">
-        <h2>Transactions</h2>
-        <div class="filters-container">
-            <div class="search-box">
-                <input type="text" id="transactionSearch" placeholder="Search by order number..." onkeyup="filterTransactions()">
-            </div>
-            <div class="date-filters">
-                <input type="date" id="transStartDate" onchange="filterTransactions()">
-                <span>to</span>
-                <input type="date" id="transEndDate" onchange="filterTransactions()">
-            </div>
+    <div id="tables-container">
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="showTable('customers')">Customers</button>
+            <button class="tab-btn" onclick="showTable('orders')">Orders</button>
+            <button class="tab-btn" onclick="showTable('transactions')">Transactions</button>
         </div>
-        <table id="transactionsTable" border="1">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Order No</th>
-                    <th>Amount</th>
-                    <th>Payment Mode</th>
-                    <th>Reference No</th>
-                    <th>Location</th>
-                    <th>Created By</th>
-                    <th>Source</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+
+        <div id="customers-section" class="table-section active">
+            <h2>Customers</h2>
+            <div class="search-box">
+                <input type="text" id="customerSearch" placeholder="Search by customer name..." onkeyup="filterCustomers()">
+            </div>
+            <table id="customersTable" border="1">
+                <thead>
+                    <tr>
+                        <th>Customer Code</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Address</th>
+                        <th>Area Location</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="orders-section" class="table-section">
+            <h2>Orders</h2>
+            <div class="filters-container">
+                <div class="search-box">
+                    <input type="text" id="orderNoSearch" placeholder="Search by order number..." onkeyup="filterOrders()">
+                </div>
+                <div class="search-box">
+                    <input type="text" id="orderSearch" placeholder="Search by customer name..." onkeyup="filterOrders()">
+                </div>
+                <div class="date-filters">
+                    <input type="date" id="startDate" onchange="filterOrders()">
+                    <span>to</span>
+                    <input type="date" id="endDate" onchange="filterOrders()">
+                </div>
+                <div class="status-filter">
+                    <select id="statusFilter" onchange="filterOrders()">
+                        <option value="">All Statuses</option>
+                        <option value="Unprocessed">Unprocessed</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Ready">Ready</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <table id="ordersTable" border="1">
+                <thead>
+                    <tr>
+                        <th>Order No</th>
+                        <th>Customer</th>
+                        <th>Order Date</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="transactions-section" class="table-section">
+            <h2>Transactions</h2>
+            <div class="filters-container">
+                <div class="search-box">
+                    <input type="text" id="transactionSearch" placeholder="Search by order number..." onkeyup="filterTransactions()">
+                </div>
+                <div class="date-filters">
+                    <input type="date" id="transStartDate" onchange="filterTransactions()">
+                    <span>to</span>
+                    <input type="date" id="transEndDate" onchange="filterTransactions()">
+                </div>
+                <div class="source-filter">
+                    <select id="sourceFilter" onchange="filterTransactions()">
+                        <option value="">All Sources</option>
+                        <option value="manual">Manual Entry</option>
+                        <option value="csv">CSV Import</option>
+                    </select>
+                </div>
+                {% if session.role == 'admin' %}
+                <div class="admin-actions">
+                    <button class="cleanup-btn" onclick="cleanupTransactions()">
+                        <i class="fas fa-broom"></i> Remove Invalid Orders
+                    </button>
+                    <button class="export-btn" onclick="exportManualTransactions()">
+                        <i class="fas fa-file-export"></i> Export Manual Entries
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            <table id="transactionsTable" border="1">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Order No</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Payment Mode</th>
+                        <th>Reference No</th>
+                        <th>Description</th>
+                        <th>Notes</th>
+                        <th>Source</th>
+                        {% if session.role == 'admin' %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
-</div>
+</body>
 
 <script>
 function showTable(tableType) {
+    if (tableType === 'employees') {
+        window.location.href = '/employees';
+        return;
+    }
+    
     // Hide all sections
     document.querySelectorAll('.table-section').forEach(section => {
         section.classList.remove('active');
@@ -272,25 +311,31 @@ function filterTransactions() {
     const searchText = document.getElementById('transactionSearch').value.toLowerCase();
     const startDate = document.getElementById('transStartDate').value;
     const endDate = document.getElementById('transEndDate').value;
-    
+    const sourceType = document.getElementById('sourceFilter').value;
     const rows = document.querySelectorAll('#transactionsTable tbody tr');
     
     rows.forEach(row => {
         const orderNo = row.children[1].textContent.toLowerCase();
-        const transDate = new Date(row.children[0].getAttribute('data-date'));
+        const rowDate = row.children[0].getAttribute('data-date');
+        const source = row.querySelector('.badge').textContent.toLowerCase();
         
         let showRow = true;
         
-        // Check order number
+        // Filter by search text
         if (searchText && !orderNo.includes(searchText)) {
             showRow = false;
         }
         
-        // Check date range
-        if (startDate && new Date(startDate) > transDate) {
+        // Filter by date range
+        if (startDate && rowDate < startDate) {
             showRow = false;
         }
-        if (endDate && new Date(endDate) < transDate) {
+        if (endDate && rowDate > endDate) {
+            showRow = false;
+        }
+        
+        // Filter by source type
+        if (sourceType && source !== sourceType) {
             showRow = false;
         }
         
@@ -324,19 +369,58 @@ function displayTransactions(transactions) {
     transactions.forEach(txn => {
         const row = document.createElement('tr');
         const date = new Date(txn.transaction_date);
+        const typeClass = txn.transaction_type === 'Income' ? 'income-type' : 'expense-type';
+        
         row.innerHTML = `
             <td data-date="${txn.transaction_date}">${date.toLocaleDateString()}</td>
             <td>${txn.order_no || '-'}</td>
+            <td class="${typeClass}">${txn.transaction_type || '-'}</td>
             <td>₹${txn.amount.toFixed(2)}</td>
             <td>${txn.payment_mode || '-'}</td>
             <td>${txn.reference_no || '-'}</td>
+            <td>${txn.description || '-'}</td>
             <td>${txn.notes || '-'}</td>
-            <td>${txn.created_by || '-'}</td>
             <td><span class="badge ${txn.source}">${txn.source}</span></td>
+            ${isAdmin ? `
+            <td>
+                ${txn.source === 'manual' ? `
+                <button class="delete-btn" onclick="deleteTransaction(${txn.id})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+                ` : '-'}
+            </td>
+            ` : ''}
         `;
         tbody.appendChild(row);
     });
 }
+
+// Add delete transaction function
+async function deleteTransaction(id) {
+    if (!confirm('Are you sure you want to delete this transaction?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/transactions/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete transaction');
+        }
+        
+        // Refresh the transactions list
+        fetchTransactions();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete transaction: ' + error.message);
+    }
+}
+
+// Add admin check variable
+const isAdmin = {{ 'true' if session.role == 'admin' else 'false' | tojson }};
 
 // Initial data load
 fetchCustomers();
@@ -352,6 +436,71 @@ function showLoading(message = 'Loading...') {
 function hideLoading() {
     const overlay = document.getElementById('loading-overlay');
     overlay.classList.remove('active');
+}
+
+async function cleanupTransactions() {
+    if (!confirm('This will remove all transactions where order number does not start with "T". Continue?')) {
+        return;
+    }
+    
+    try {
+        showLoading('Cleaning up transactions...');
+        const response = await fetch('/api/transactions/cleanup', {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to cleanup transactions');
+        }
+        
+        const result = await response.json();
+        alert(`Successfully removed ${result.count} invalid transactions`);
+        
+        // Refresh the transactions list
+        fetchTransactions();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to cleanup transactions: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function exportManualTransactions() {
+    try {
+        showLoading('Exporting manual transactions...');
+        
+        const response = await fetch('/api/transactions/export/manual');
+        
+        if (!response.ok) {
+            throw new Error('Failed to export transactions');
+        }
+        
+        // Get the filename from the response headers
+        const filename = response.headers.get('content-disposition')?.split('filename=')[1] || 'manual_transactions.csv';
+        
+        // Create blob from response
+        const blob = await response.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to export transactions: ' + error.message);
+    } finally {
+        hideLoading();
+    }
 }
 </script>
 
@@ -547,7 +696,119 @@ tr:hover {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.income-type {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.expense-type {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.delete-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.delete-btn:hover {
+    background-color: #c82333;
+}
+
+/* Add Font Awesome for the trash icon */
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+.source-filter select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.source-filter select:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.cleanup-btn {
+    background-color: #ffc107;
+    color: #000;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.cleanup-btn:hover {
+    background-color: #e0a800;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.export-btn {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.export-btn:hover {
+    background-color: #138496;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.nav-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.nav-btn:hover {
+    background-color: #45a049;
+}
+
+.nav-btn.active {
+    background-color: #357a38;
+}
 </style>
+
+{% if show_accounting_chat %}
+    {% include 'accounting_chat.html' %}
+{% endif %}
 
 
 

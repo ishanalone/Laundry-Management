@@ -1,7 +1,7 @@
-from flask import jsonify, request, send_from_directory, render_template, session, redirect, url_for
+from flask import jsonify, request, send_from_directory, render_template, session, redirect, url_for, send_file
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
-from models import Customer, Sales, Accounts, User
+from models import Customer, Sales, Accounts, User, Employee
 from extensions import db
 from constants import (
     TRANSACTION_TYPES,
@@ -12,6 +12,9 @@ from constants import (
 )
 from functools import wraps
 from services.whatsapp_service import WhatsAppService
+from services.accounting_ai_service import AccountingAIAgent
+import csv
+from io import StringIO
 
 def login_required(f):
     @wraps(f)
@@ -61,7 +64,7 @@ def init_routes(app):
     @app.route('/')
     @login_required
     def index():
-        return render_template('display.html')
+        return render_template('display.html', show_accounting_chat=True)
 
     @app.route('/upload')
     def upload_page():
@@ -286,23 +289,21 @@ def init_routes(app):
             db.session.rollback()
             return jsonify({'error': str(e)}), 400 
 
-    @app.route('/transactions', methods=['GET'])
+    @app.route('/transactions')
     def get_transactions():
-        try:
-            transactions = Accounts.query.order_by(Accounts.transaction_date.desc()).all()
-            return jsonify([{
-                'transaction_date': txn.transaction_date.isoformat() if txn.transaction_date else None,
-                'order_no': txn.order_no,
-                'amount': txn.amount,
-                'payment_mode': txn.payment_mode,
-                'reference_no': txn.reference_no,
-                'notes': txn.notes,
-                'created_by': txn.created_by,
-                'created_at': txn.created_at.isoformat() if txn.created_at else None,
-                'source': txn.source
-            } for txn in transactions]), 200
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500 
+        transactions = Accounts.query.order_by(Accounts.transaction_date.desc()).all()
+        return jsonify([{
+            'id': txn.id,
+            'transaction_date': txn.transaction_date,
+            'order_no': txn.order_no,
+            'transaction_type': txn.transaction_type,
+            'amount': float(txn.amount) if txn.amount else 0,
+            'payment_mode': txn.payment_mode,
+            'reference_no': txn.reference_no,
+            'description': txn.description,
+            'notes': txn.notes,
+            'source': txn.source
+        } for txn in transactions])
 
     @app.route('/admin')
     @login_required
@@ -646,3 +647,179 @@ def init_routes(app):
             return jsonify({'status': 'ok'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500 
+
+    @app.route('/api/accounting/insights', methods=['GET'])
+    def get_accounting_insights():
+        try:
+            days = request.args.get('days', default=7, type=int)
+            analysis_type = request.args.get('type', default='daily', type=str)
+            date = request.args.get('date', type=str)  # Format: YYYY-MM-DD
+            
+            ai_agent = AccountingAIAgent()
+            
+            if analysis_type == 'daily':
+                insights = ai_agent.get_daily_summary(days)
+            elif analysis_type == 'monthly':
+                months = days // 30
+                insights = ai_agent.get_monthly_analysis(months)
+            elif analysis_type == 'anomalies':
+                insights = ai_agent.detect_anomalies(days)
+            elif analysis_type == 'balance_sheet':
+                insights = ai_agent.get_daily_balance_sheet(date)
+            else:
+                return jsonify({'error': 'Invalid analysis type'}), 400
+            
+            return jsonify({
+                'success': True,
+                'insights': insights
+            })
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500 
+
+    @app.route('/api/transactions/<int:id>', methods=['DELETE'])
+    @admin_required
+    def delete_transaction(id):
+        try:
+            transaction = Accounts.query.get_or_404(id)
+            
+            # Only allow deletion of manual transactions
+            if transaction.source != 'manual':
+                return jsonify({'error': 'Can only delete manual transactions'}), 403
+            
+            db.session.delete(transaction)
+            db.session.commit()
+            
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500 
+
+    @app.route('/api/transactions/cleanup', methods=['DELETE'])
+    @admin_required
+    def cleanup_transactions():
+        try:
+            # Find all transactions with invalid order numbers
+            invalid_transactions = Accounts.query.filter(
+                ~Accounts.order_no.like('T%')  # ~ is the NOT operator in SQLAlchemy
+            ).all()
+            
+            # Count transactions to be deleted
+            count = len(invalid_transactions)
+            
+            # Delete the transactions
+            for transaction in invalid_transactions:
+                db.session.delete(transaction)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Removed {count} invalid transactions',
+                'count': count
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500 
+
+    @app.route('/api/transactions/export/manual', methods=['GET'])
+    @admin_required
+    def export_manual_transactions():
+        try:
+            # Get all manual transactions
+            transactions = Accounts.query.filter_by(source='manual').order_by(Accounts.transaction_date.desc()).all()
+            
+            # Create CSV in memory
+            output = StringIO()
+            writer = csv.writer(output)
+            
+            # Write headers
+            writer.writerow([
+                'Date', 
+                'Order No', 
+                'Type', 
+                'Amount', 
+                'Payment Mode', 
+                'Reference No',
+                'Description',
+                'Notes'
+            ])
+            
+            # Write data
+            for txn in transactions:
+                writer.writerow([
+                    txn.transaction_date.strftime('%Y-%m-%d') if txn.transaction_date else '',
+                    txn.order_no or '',
+                    txn.transaction_type or '',
+                    str(txn.amount) if txn.amount else '0',
+                    txn.payment_mode or '',
+                    txn.reference_no or '',
+                    txn.description or '',
+                    txn.notes or ''
+                ])
+            
+            # Prepare response
+            output.seek(0)  # Return to start of file
+            filename = f"manual_transactions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            
+            return send_file(
+                output,
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name=filename
+            )
+            
+        except Exception as e:
+            print(f"Export error: {str(e)}")  # Add debug logging
+            return jsonify({'error': str(e)}), 500 
+
+    @app.route('/employees')
+    @login_required
+    def employees_page():
+        return render_template('employees.html')
+
+    @app.route('/api/employees', methods=['GET'])
+    @login_required
+    def get_employees():
+        employees = Employee.query.all()
+        return jsonify([{
+            'id': emp.id,
+            'employee_code': emp.employee_code,
+            'name': emp.name,
+            'phone': emp.phone,
+            'email': emp.email,
+            'pan_number': emp.pan_number,
+            'aadhar_number': emp.aadhar_number,
+            'designation': emp.designation,
+            'department': emp.department,
+            'join_date': emp.join_date,
+            'status': emp.status,
+            'created_at': emp.created_at,
+            'updated_at': emp.updated_at
+        } for emp in employees])
+
+    @app.route('/api/employees', methods=['POST'])
+    @login_required
+    def add_employee():
+        try:
+            data = request.json
+            employee = Employee(
+                employee_code=data['employee_code'],
+                name=data['name'],
+                phone=data.get('phone'),
+                email=data.get('email'),
+                pan_number=data.get('pan_number'),
+                aadhar_number=data.get('aadhar_number'),
+                designation=data.get('designation'),
+                department=data.get('department'),
+                join_date=datetime.strptime(data['join_date'], '%Y-%m-%d') if data.get('join_date') else None,
+                status=data.get('status', 'Active')
+            )
+            db.session.add(employee)
+            db.session.commit()
+            return jsonify({'success': True, 'id': employee.id})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400 

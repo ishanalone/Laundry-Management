@@ -95,6 +95,14 @@
         .customer-item:hover {
             background-color: #f0f0f0;
         }
+
+        select[name="transaction_type"] option[value="Income"] {
+            color: #28a745;
+        }
+
+        select[name="transaction_type"] option[value="Expense"] {
+            color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -115,6 +123,8 @@
                         <label for="transaction_type">Transaction Type</label>
                         <select id="transaction_type" name="transaction_type" required onchange="updateCategories()">
                             <option value="">Select Type</option>
+                            <option value="Income">Income</option>
+                            <option value="Expense">Expense</option>
                         </select>
                     </div>
                 </div>
@@ -253,8 +263,24 @@
 
         function updateCategories() {
             const type = document.getElementById('transaction_type').value;
-            const categories = type === 'Income' ? window.INCOME_CATEGORIES : window.EXPENSE_CATEGORIES;
-            populateSelect('category', categories);
+            const categorySelect = document.getElementById('category');
+            categorySelect.innerHTML = '<option value="">Select Category</option>';
+            
+            if (type === 'Income') {
+                window.INCOME_CATEGORIES.forEach(category => {
+                    const opt = document.createElement('option');
+                    opt.value = category;
+                    opt.textContent = category;
+                    categorySelect.appendChild(opt);
+                });
+            } else if (type === 'Expense') {
+                window.EXPENSE_CATEGORIES.forEach(category => {
+                    const opt = document.createElement('option');
+                    opt.value = category;
+                    opt.textContent = category;
+                    categorySelect.appendChild(opt);
+                });
+            }
         }
 
         function calculateTotal() {
@@ -310,36 +336,37 @@
         }
 
         // Update form submission
-        document.getElementById('transactionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        async function submitTransaction(event) {
+            event.preventDefault();
             showLoading('Saving transaction...');
             
-            const formData = new FormData(this);
+            const formData = new FormData(event.target);
             const data = Object.fromEntries(formData.entries());
             
-            fetch('/api/transactions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
+            try {
+                const response = await fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.error) {
+                    throw new Error(result.error);
                 }
+                
                 alert('Transaction saved successfully!');
-                this.reset();
-            })
-            .catch(error => {
+                event.target.reset();
+                
+            } catch (error) {
                 console.error('Error:', error);
                 alert('Failed to save transaction: ' + error.message);
-            })
-            .finally(() => {
+            } finally {
                 hideLoading();
-            });
-        });
+            }
+        }
 
         // Load constants when page loads
         loadConstants();

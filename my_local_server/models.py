@@ -11,6 +11,7 @@ from constants import (
     ORDER_STATUSES
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+import re
 
 class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -64,8 +65,8 @@ class Sales(db.Model):
 
 class Accounts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    transaction_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    transaction_type = db.Column(db.String(50), nullable=False)  # Income/Expense/Transfer
+    transaction_date = db.Column(db.DateTime, nullable=False)
+    transaction_type = db.Column(db.String(50))  # Make sure this field exists
     category = db.Column(db.String(100), nullable=False)  # Salary, Rent, Utilities, Sales, etc.
     sub_category = db.Column(db.String(100))  # More specific categorization
     
@@ -177,3 +178,32 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+class Employee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    employee_code = db.Column(db.String(50), unique=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(100))
+    pan_number = db.Column(db.String(10))
+    aadhar_number = db.Column(db.String(12))
+    designation = db.Column(db.String(100))
+    department = db.Column(db.String(100))
+    join_date = db.Column(db.DateTime)
+    status = db.Column(db.String(20), default='Active')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    @validates('pan_number')
+    def validate_pan(self, key, value):
+        if value:
+            if not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', value):
+                raise ValueError('Invalid PAN number format')
+        return value
+
+    @validates('aadhar_number')
+    def validate_aadhar(self, key, value):
+        if value:
+            if not re.match(r'^\d{12}$', value):
+                raise ValueError('Aadhar number must be 12 digits')
+        return value

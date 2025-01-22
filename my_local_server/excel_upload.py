@@ -11,8 +11,112 @@ from constants import (
     PAYMENT_LOCATION_MAPPING,
     COLUMN_STANDARDIZATION
 )
+import numpy as np
 
 def init_upload_routes(app):
+    def is_valid_order_no(order_no):
+        """Check if order number is valid"""
+        if pd.isna(order_no):
+            return False
+        
+        order_no = str(order_no).strip()
+        # Valid order numbers start with T or SRN
+        return order_no.startswith(('T', 'SRN'))
+
+    def standardize_column_names(df):
+        """Standardize CSV column names to match our expected format"""
+        column_mapping = {
+            'Order Date': 'order_date',
+            'Payment Date': 'payment_date',
+            'Order Number': 'order_no',
+            'Customer Code': 'customer_code',
+            'Customer Name': 'customer_name',
+            'Customer Address': 'customer_address',
+            'Customer Mobile No.': 'customer_phone',
+            'Payment Received': 'payment_received',
+            'Adjustments': 'adjustment',
+            'Balance': 'balance',
+            'Accept By': 'accept_by',
+            'Payment Mode': 'payment_mode',
+            'Online TransactionID': 'online_transactionid',
+            'Payment Made At': 'payment_made_at',
+            'Type': 'type'
+        }
+        
+        # Convert column names to title case for consistent mapping
+        df.columns = [col.strip().title() for col in df.columns]
+        df.columns = [column_mapping.get(col, col.lower().replace(' ', '_')) for col in df.columns]
+        return df
+
+    def process_payment_row(row):
+        """Process a single payment row from CSV"""
+        try:
+            # Skip rows with "Total" or empty order numbers
+            if pd.isna(row['order_no']) or 'total' in str(row['order_no']).lower():
+                return None
+
+            # Convert payment date with fallback
+            try:
+                payment_date = pd.to_datetime(row['payment_date'])
+                if pd.isna(payment_date):  # Check if date is NaT
+                    payment_date = datetime.utcnow()
+            except:
+                payment_date = datetime.utcnow()
+
+            # Validate and convert amount with fallback
+            try:
+                amount = float(row['payment_received']) if pd.notna(row['payment_received']) else 0.0
+                if pd.isna(amount):  # Check if amount is NaN
+                    amount = 0.0
+            except:
+                amount = 0.0
+
+            # Skip if both date and amount are invalid
+            if pd.isna(payment_date) or pd.isna(amount):
+                print(f"Skipping row with invalid date or amount: {row}")
+                return None
+
+            # Create transaction record with validated data
+            transaction = Accounts(
+                transaction_date=payment_date,
+                transaction_type='Income',
+                category='Sales',
+                amount=amount,
+                tax_amount=0.0,  # Default tax amount
+                total_amount=amount,
+                payment_mode=map_payment_mode(row['payment_mode']),
+                payment_status='Completed',
+                order_no=str(row['order_no']).strip(),
+                is_reconciled=False,  # Default value
+                created_at=datetime.utcnow(),
+                source='csv'
+            )
+            
+            return transaction
+            
+        except Exception as e:
+            print(f"Error processing payment row: {row}")
+            print(f"Error details: {str(e)}")
+            return None
+
+    def standardize_payment_mode(mode):
+        """Standardize payment mode values"""
+        if pd.isna(mode):
+            return 'Cash'  # Default to Cash if not specified
+        
+        mode_lower = str(mode).lower().strip()
+        from constants import PAYMENT_MODE_MAPPING
+        
+        return PAYMENT_MODE_MAPPING.get(mode_lower, mode)  # Return original if no mapping found
+
+    def get_customer_id(row):
+        """Get or create customer ID from row data"""
+        if pd.notna(row['customer_code']):
+            customer = Customer.query.filter_by(customer_code=row['customer_code']).first()
+            if customer:
+                return customer.id
+        return None
+
     def map_column_name(df, upload_type='ORDERS'):
         """Map various possible column names to standardized names"""
         mapped_columns = {}
@@ -43,14 +147,42 @@ def init_upload_routes(app):
 
     def verify_required_columns(df, upload_type='ORDERS'):
         """Verify that all required columns are present"""
-        missing_columns = [col for col in REQUIRED_COLUMNS[upload_type] 
-                          if col not in df.columns]
+        # First standardize the column names
+        df = standardize_columns(df)
+        
+        # Get required columns for this upload type
+        required = REQUIRED_COLUMNS[upload_type]
+        
+        # Create a mapping of variations to standard names
+        column_variations = {}
+        for standard, variations in CSV_COLUMNS[upload_type].items():
+            for variant in variations:
+                column_variations[variant.lower()] = standard
+        
+        # Check for missing columns
+        missing_columns = []
+        for required_col in required:
+            # Check if column exists directly
+            if required_col in df.columns:
+                continue
+            
+            # Check variations of the column name
+            found = False
+            for col in df.columns:
+                if col.lower() in column_variations and column_variations[col.lower()] == required_col:
+                    found = True
+                    break
+            
+            if not found:
+                missing_columns.append(required_col)
         
         if missing_columns:
             raise ValueError(
                 f'Missing required columns: {", ".join(missing_columns)}\n'
                 f'Available columns: {", ".join(df.columns)}'
             )
+        
+        return df
 
     def parse_date(date_str, date_type='ORDER_DATE'):
         """Parse dates using format list from constants"""
@@ -148,13 +280,47 @@ def init_upload_routes(app):
         # Convert all column names to the new format
         new_columns = {}
         for col in df.columns:
+            # Try exact match first
             if col in COLUMN_STANDARDIZATION:
                 new_columns[col] = COLUMN_STANDARDIZATION[col]
+                continue
+            
+            # Try case-insensitive match
+            col_lower = col.lower()
+            for old_col, new_col in COLUMN_STANDARDIZATION.items():
+                if old_col.lower() == col_lower:
+                    new_columns[col] = new_col
+                    break
             else:
-                # Keep columns that don't need to be changed
-                new_columns[col] = col
-                
+                # If no match found, convert to snake_case
+                new_columns[col] = col.lower().replace(' ', '_').replace('/', '_')
+        
         return df.rename(columns=new_columns)
+
+    def convert_dates(df):
+        """Convert all date columns to datetime with flexible format handling"""
+        date_columns = [
+            'payment_date', 
+            'order_date', 
+            'due_date', 
+            'created_at', 
+            'last_activity'
+        ]
+        
+        for col in date_columns:
+            if col in df.columns:
+                try:
+                    # Try common Indian date formats first
+                    df[col] = pd.to_datetime(df[col], format='%d %b %Y', errors='coerce')
+                except:
+                    try:
+                        # Then try with time
+                        df[col] = pd.to_datetime(df[col], format='%d %b %Y %I:%M:%S %p', errors='coerce')
+                    except:
+                        # Finally fallback to general parsing with dayfirst
+                        df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
+        
+        return df
 
     @app.route('/upload-excel', methods=['POST'])
     def upload_excel():
@@ -408,132 +574,72 @@ def init_upload_routes(app):
         try:
             if 'file' not in request.files:
                 return jsonify({'error': 'No file uploaded'}), 400
-
+            
             file = request.files['file']
-            if file.filename == '':
-                return jsonify({'error': 'No file selected'}), 400
-
             if not file.filename.endswith('.csv'):
-                return jsonify({'error': 'File must be a CSV'}), 400
-
-            # Try different encodings
-            encodings = ['utf-8', 'Windows-1252', 'iso-8859-1']
-            df = None
+                return jsonify({'error': 'Please upload a CSV file'}), 400
             
-            for encoding in encodings:
-                try:
-                    file.seek(0)
-                    df = pd.read_csv(file, encoding=encoding)
-                    break
-                except UnicodeDecodeError:
-                    continue
+            # First read the entire CSV file
+            df = pd.read_csv(file)
             
-            if df is None:
-                return jsonify({'error': 'Unable to read CSV file. Please check the file encoding.'}), 400
-
-            # Standardize column names first, before any other processing
-            df = standardize_columns(df)
-
-            # Then do the column mapping
-            df = map_column_name(df, 'PAYMENTS')
+            # Standardize column names
+            df = standardize_column_names(df)
             
-            # Continue with the rest of the processing...
-
-            # Map column names
-            df = map_column_name(df)
-            print("Mapped CSV Columns:", df.columns.tolist())
-
+            # Convert all date columns
+            df = convert_dates(df)
+            
+            # Clean other data
+            df = df.replace({np.nan: None})
+            df['payment_received'] = pd.to_numeric(df['payment_received'], errors='coerce')
+            df['order_no'] = df['order_no'].astype(str)
+            df = df.apply(lambda x: x.str.strip() if isinstance(x, str) else x)
+            
+            # Process each row
+            transactions = []
             for _, row in df.iterrows():
-                try:
-                    # Check if it's a return order first
-                    is_return = is_return_order(row['order_no'])
-                    
-                    # Get payment amounts
-                    payment_amount = float(row['paid_amount']) if pd.notna(row['paid_amount']) else 0.0
-                    adjustment = float(row['adjustment']) if pd.notna(row['adjustment']) else 0.0
-                    
-                    # For return orders (SRN), convert negative amount to positive for expense entry
-                    if is_return:
-                        payment_amount = abs(payment_amount)  # Convert negative to positive
-                        adjustment = abs(adjustment)  # Convert negative to positive
-                        order = None  # Don't look up return orders
-                    else:
-                        # Only look up order for regular transactions
-                        order = Sales.query.filter_by(order_no=str(row['order_no'])).first()
-                        if not order:
-                            print(f"Order not found: {row['order_no']}")
-                            continue
-
-                        # Update order payment details
-                        order.paid = (order.paid or 0) + payment_amount
-                        order.adjustment = (order.adjustment or 0) + adjustment
-                        order.balance = float(row['balance']) if pd.notna(row['balance']) else (order.net_amount - order.paid)
-                        order.last_payment_activity = parse_payment_date(row['transaction_date'])
-                        order.order_status = 'Delivered'
-
-                    # Create transaction record
-                    payment_mode = map_payment_mode(row['payment_mode']) if pd.notna(row['payment_mode']) else None
-                    
-                    # Set transaction type based on order number
-                    transaction_type = 'Expense' if is_return else 'Income'
-                    description = (
-                        f"Refund for return order {row['order_no']}" 
-                        if is_return 
-                        else f"Payment for order {row['order_no']}"
-                    )
-                    
-                    transaction = Accounts(
-                        transaction_date=parse_payment_date(row['transaction_date']),
-                        transaction_type=transaction_type,
-                        category='SRN-Garment Return' if is_return else 'Sales',
-                        amount=payment_amount,
-                        total_amount=payment_amount + adjustment,
-                        payment_mode=payment_mode,
-                        payment_status='Completed',
-                        reference_no=str(row['transaction_id']) if pd.notna(row['transaction_id']) else None,
-                        order_no=str(row['order_no']),
-                        customer_id=order.customer_id if order else None,
-                        description=description,
-                        created_by=row.get('accepted_by', ''),
-                        created_at=datetime.utcnow(),
-                        notes=map_payment_location(row['payment_location']),
-                        source='csv'
-                    )
-                    db.session.add(transaction)
-
-                except Exception as e:
-                    print(f"Error processing payment row: {row}")
-                    print(f"Error details: {str(e)}")
-                    db.session.rollback()
-                    continue
-
-            db.session.commit()
-            return jsonify({'message': 'Payment data imported successfully'}), 200
-
+                transaction = process_payment_row(row)
+                if transaction:
+                    transactions.append(transaction)
+            
+            # Bulk save transactions
+            if transactions:
+                db.session.bulk_save_objects(transactions)
+                db.session.commit()
+                
+            return jsonify({
+                'success': True,
+                'message': f'Successfully processed {len(transactions)} transactions'
+            })
+            
         except Exception as e:
-            print(f"Main error: {str(e)}")
             db.session.rollback()
+            print(f"Error in upload_payments: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
 def map_payment_mode(mode):
-    """Map payment mode using constant mapping"""
+    """Map payment mode to standardized format"""
     if pd.isna(mode):
-        return None
+        return 'Cash'
         
-    mode = str(mode).strip().lower()
-    
-    # Try exact match first
-    mapped_value = PAYMENT_MODE_MAPPING.get(mode)
-    if mapped_value:
-        return mapped_value
-        
-    # Try removing spaces and slashes
-    cleaned_mode = mode.replace(' ', '').replace('/', '')
-    for key, value in PAYMENT_MODE_MAPPING.items():
-        if cleaned_mode == key.replace(' ', '').replace('/', ''):
-            return value
-            
-    return mode.title()
+    mode = str(mode).strip().upper()
+    mapping = {
+        'CASH': 'Cash',
+        'UPI': 'UPI',
+        'BANK TRANSFER': 'Bank Transfer',
+        'CREDIT CARD': 'Credit Card',
+        'DEBIT CARD': 'Debit Card',
+        'CHEQUE': 'Check',
+        'CHECK': 'Check',
+        'DIGITAL WALLET': 'Digital Wallet',
+        'PHONEPE': 'PhonePe',
+        'GOOGLE PAY': 'Google Pay',
+        'PAYTM': 'Paytm',
+        'NEFT': 'NEFT',
+        'RTGS': 'RTGS',
+        'IMPS': 'IMPS',
+        'PACKAGE': 'Package'
+    }
+    return mapping.get(mode, 'Cash')  # Default to Cash if unknown mode
 
 def map_payment_location(location):
     """Map payment location using constant mapping"""
