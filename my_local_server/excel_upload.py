@@ -54,10 +54,8 @@ def init_upload_routes(app):
             # Skip rows with "Total" or empty order numbers
             if pd.isna(row['order_no']) or 'total' in str(row['order_no']).lower():
                 return None
-
-            # Convert payment date with fallback
             try:
-                payment_date = pd.to_datetime(row['payment_date'])
+                payment_date = pd.to_datetime(row['payment_date'], dayfirst=True)
                 if pd.isna(payment_date):  # Check if date is NaT
                     payment_date = datetime.utcnow()
             except:
@@ -196,8 +194,8 @@ def init_upload_routes(app):
             return None
         
         try:
-            # Try pandas to_datetime first
-            return pd.to_datetime(date_str)
+            # Try pandas to_datetime first with dayfirst=True
+            return pd.to_datetime(date_str, dayfirst=True)
         except:
             # Try specific formats for this date type
             for fmt in DATE_FORMATS[date_type]:
@@ -310,15 +308,10 @@ def init_upload_routes(app):
         for col in date_columns:
             if col in df.columns:
                 try:
-                    # Try common Indian date formats first
-                    df[col] = pd.to_datetime(df[col], format='%d %b %Y', errors='coerce')
-                except:
-                    try:
-                        # Then try with time
-                        df[col] = pd.to_datetime(df[col], format='%d %b %Y %I:%M:%S %p', errors='coerce')
-                    except:
-                        # Finally fallback to general parsing with dayfirst
-                        df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
+                    df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
+                except Exception as e:
+                    print(f"Error converting {col}: {str(e)}")
+                    continue
         
         return df
 
@@ -332,7 +325,7 @@ def init_upload_routes(app):
             return jsonify({'error': 'Please upload a CSV file'}), 400
         
         try:
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, encoding='Windows-1252')
             # Map column names to standardized format
             df = map_column_name(df)
             
@@ -521,53 +514,6 @@ def init_upload_routes(app):
             print(f"Main error: {str(e)}")
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
-        
-    @app.route('/upload/transactions', methods=['POST'])
-    def upload_transactions():
-        try:
-            if 'file' not in request.files:
-                return jsonify({'error': 'No file uploaded'}), 400
-
-            file = request.files['file']
-            if file.filename == '':
-                return jsonify({'error': 'No file selected'}), 400
-
-            if not file.filename.endswith('.csv'):
-                return jsonify({'error': 'File must be a CSV'}), 400
-
-            # Read CSV file
-            df = pd.read_csv(file)
-
-            for _, row in df.iterrows():
-                try:
-                    # Create transaction record
-                    transaction = Accounts(
-                        transaction_date=parse_transaction_date(row['payment_date']),
-                        transaction_type='Income',
-                        category='Sales',
-                        amount=float(row['payment_received']) if pd.notna(row['payment_received']) else 0.0,
-                        total_amount=float(row['payment_received']) if pd.notna(row['payment_received']) else 0.0,
-                        payment_mode=map_payment_mode(row['payment_mode']) if pd.notna(row['payment_mode']) else None,
-                        payment_status='Completed',
-                        reference_no=str(row['transaction_id']) if pd.notna(row['transaction_id']) else None,
-                        order_no=str(row['order_no']) if pd.notna(row['order_no']) else None,
-                        description=f"Payment for order {row['order_no']}",
-                        created_by=row['accepted_by'] if pd.notna(row['accepted_by']) else None
-                    )
-                    db.session.add(transaction)
-
-                except Exception as e:
-                    print(f"Error processing transaction row: {row}")
-                    print(f"Error details: {str(e)}")
-                    db.session.rollback()
-                    continue
-
-            db.session.commit()
-            return jsonify({'message': 'Transaction data imported successfully'}), 200
-
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': str(e)}), 500
 
     @app.route('/upload/payments', methods=['POST'])
     def upload_payments():
@@ -580,14 +526,13 @@ def init_upload_routes(app):
                 return jsonify({'error': 'Please upload a CSV file'}), 400
             
             # First read the entire CSV file
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, encoding='Windows-1252')
             
             # Standardize column names
             df = standardize_column_names(df)
-            
             # Convert all date columns
             df = convert_dates(df)
-            
+            #breakpoint()
             # Clean other data
             df = df.replace({np.nan: None})
             df['payment_received'] = pd.to_numeric(df['payment_received'], errors='coerce')
@@ -710,5 +655,70 @@ def process_orders(df):
             continue
 
     return orders
+
+def process_csv_file(file, file_type):
+    try:
+        # Read CSV with pandas
+        df = pd.read_csv(file, dtype=str)
+        
+        # Convert column names to lowercase for case-insensitive matching
+        df.columns = [col.lower().strip() for col in df.columns]
+        
+        # Map CSV columns to database columns
+        mapped_columns = {}
+        for db_col, csv_cols in CSV_COLUMNS[file_type].items():
+            for csv_col in csv_cols:
+                if csv_col.lower() in df.columns:
+                    mapped_columns[db_col] = csv_col.lower()
+                    break
+        
+        # Validate required columns
+        missing_columns = []
+        for required_col in REQUIRED_COLUMNS[file_type]:
+            if required_col not in mapped_columns:
+                missing_columns.append(required_col)
+        
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
+        
+        # Process date columns with day-first format
+        date_columns = {
+            'ORDERS': ['order_date_time', 'due_date', 'last_activity', 'last_payment_activity'],
+            'PAYMENTS': ['transaction_date'],
+            'TRANSACTIONS': ['transaction_date']
+        }
+        
+        for date_col in date_columns[file_type]:
+            if date_col in mapped_columns and mapped_columns[date_col] in df.columns:
+                df[mapped_columns[date_col]] = pd.to_datetime(
+                    df[mapped_columns[date_col]], 
+                    dayfirst=True,  # Parse dates as day-first
+                    format=None,    # Allow flexible parsing
+                    errors='coerce' # Replace invalid dates with NaT
+                )
+        
+        # Create records list
+        records = []
+        for _, row in df.iterrows():
+            record = {}
+            for db_col, csv_col in mapped_columns.items():
+                value = row[csv_col]
+                
+                # Handle NaN/None values
+                if pd.isna(value):
+                    value = None
+                    
+                # Format datetime objects
+                elif isinstance(value, pd.Timestamp):
+                    value = value.to_pydatetime()
+                    
+                record[db_col] = value
+            records.append(record)
+        
+        return records
+        
+    except Exception as e:
+        app.logger.error(f"Error processing CSV file: {str(e)}")
+        raise ValueError(f"Error processing CSV file: {str(e)}")
 
 

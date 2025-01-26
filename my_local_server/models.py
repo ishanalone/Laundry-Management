@@ -66,51 +66,21 @@ class Sales(db.Model):
 class Accounts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     transaction_date = db.Column(db.DateTime, nullable=False)
-    transaction_type = db.Column(db.String(50))  # Make sure this field exists
-    category = db.Column(db.String(100), nullable=False)  # Salary, Rent, Utilities, Sales, etc.
-    sub_category = db.Column(db.String(100))  # More specific categorization
-    
-    # Amount details
+    order_no = db.Column(db.String(50))
+    transaction_type = db.Column(db.String(50))
+    category = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     tax_amount = db.Column(db.Float, default=0.0)
     total_amount = db.Column(db.Float, nullable=False)
-    
-    # Payment details
-    payment_mode = db.Column(db.String(50))  # Cash, UPI, Bank Transfer, Card, etc.
-    payment_status = db.Column(db.String(50), default='Completed')  # Pending, Completed, Failed
-    reference_no = db.Column(db.String(100))  # Check number, UPI ID, Transaction ID
-    
-    # Related entities
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'))
-    order_no = db.Column(db.String(50), db.ForeignKey('sales.order_no'))
-    vendor_name = db.Column(db.String(100))
-    
-    # Additional details
+    payment_mode = db.Column(db.String(50))
+    payment_status = db.Column(db.String(50), default='Completed')
+    reference_no = db.Column(db.String(100))
     description = db.Column(db.Text)
     notes = db.Column(db.Text)
-    attachments = db.Column(db.String(500))  # URLs or paths to receipts/invoices
-    
-    # Accounting fields
-    fiscal_year = db.Column(db.String(10))
-    accounting_period = db.Column(db.String(7))  # YYYY-MM
-    
-    # Reconciliation
     is_reconciled = db.Column(db.Boolean, default=False)
-    reconciled_date = db.Column(db.DateTime)
-    reconciled_by = db.Column(db.String(100))
-    
-    # Audit fields
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.String(100))
-    modified_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    modified_by = db.Column(db.String(100))
-    
-    # Relationships
-    customer = db.relationship('Customer', backref='transactions')
-    order = db.relationship('Sales', backref='transactions')
-    
-    # Source field
-    source = db.Column(db.String(50), default='manual')  # 'manual' or 'csv'
+    source = db.Column(db.String(50), default='manual')
 
     def __repr__(self):
         return f'<Transaction {self.id}: {self.transaction_type} - {self.amount}>'
@@ -207,3 +177,18 @@ class Employee(db.Model):
             if not re.match(r'^\d{12}$', value):
                 raise ValueError('Aadhar number must be 12 digits')
         return value
+
+class DailyBalance(db.Model):
+    __tablename__ = 'daily_balances'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    bank_balance = db.Column(db.Numeric(10, 2), nullable=False)
+    cash_in_hand = db.Column(db.Numeric(10, 2), nullable=False)
+    notes = db.Column(db.String(500))
+    verified_by = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<DailyBalance {self.date}: Bank={self.bank_balance}, Cash={self.cash_in_hand}>'

@@ -1,180 +1,1328 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<style>
+/* Base Layout */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+    min-height: 100vh;
+}
+
+/* Navigation */
+.top-nav {
+    background-color: #343a40;
+    color: white;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    z-index: 1000;
+}
+
+.nav-actions {
+    display: flex;
+    gap: 10px;
+    height: 100%;
+    align-items: center;
+}
+
+.nav-btn {
+    height: 40px;
+    padding: 0 15px;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* Main Layout */
+.main-container {
+    display: flex;
+    margin-top: 64px;
+    min-height: calc(100vh - 64px);
+}
+
+.side-nav {
+    width: 250px;
+    background-color: white;
+    padding: 1rem;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    position: fixed;
+    top: 64px;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.content-area {
+    flex: 1;
+    margin-left: 250px;
+    padding: 2rem;
+    background-color: #f4f6f9;
+    min-height: calc(100vh - 64px);
+}
+
+/* Side Navigation Buttons */
+.side-nav-btn {
+    width: 100%;
+    padding: 12px 15px;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s;
+}
+
+.side-nav-btn:hover {
+    background-color: #f8f9fa;
+}
+
+.side-nav-btn.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* Section Containers */
+.section-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    display: none;
+}
+
+.section-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.section-header h2 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+/* Filters and Search */
+.filter-group {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 8px 12px 8px 35px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+}
+
+/* Add to your existing styles */
+.date-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.date-filter-group label {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-inputs span {
+    color: #666;
+    font-size: 12px;
+}
+
+.date-inputs input[type="date"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.status-filter {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+/* Tables */
+.table-container {
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Status and Badges */
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge.manual {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.badge.csv {
+    background-color: #2196F3;
+    color: white;
+}
+
+/* Loading Overlay */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255,255,255,0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-warning, .btn-info {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    color: white;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.btn-info {
+    background-color: #17a2b8;
+}
+
+/* Add your existing accounting styles here */
+
+/* Accounting Styles */
+.accounting-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    padding: 20px;
+}
+
+.chat-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 250px);
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.message {
+    margin-bottom: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    max-width: 80%;
+}
+
+.message.system {
+    background-color: #f8f9fa;
+    margin-left: 0;
+}
+
+.message.user {
+    background-color: #e3f2fd;
+    margin-left: auto;
+}
+
+.message.ai {
+    background-color: #f1f8e9;
+    margin-right: auto;
+}
+
+.chat-input-container {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+}
+
+.analysis-select, .analysis-date {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.analysis-select {
+    flex: 2;
+}
+
+.analysis-date {
+    flex: 1;
+}
+
+.chat-send-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.chat-send-btn:hover {
+    background-color: #45a049;
+}
+
+.accounting-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+    margin: 0 0 15px;
+    color: #666;
+    font-size: 16px;
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: bold;
+}
+
+.stat-value.income {
+    color: #28a745;
+}
+
+.stat-value.expense {
+    color: #dc3545;
+}
+
+/* Update brand styling */
+.brand h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.daily-balance-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.balance-form {
+    display: grid;
+    gap: 15px;
+    max-width: 500px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-control {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Add these styles to your existing <style> section */
+.pagination-controls {
+    margin-top: 1rem;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-btn {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #f8f9fa;
+}
+
+.page-info {
+    color: #666;
+}
+
+/* Add to your existing styles */
+.bulk-actions {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.transaction-row.selected {
+    background-color: #e2e6ea;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+</style>
+
 <body>
-    <!-- Add navigation buttons at the top -->
-    <div class="nav-buttons">
-        <button onclick="showTable('orders')" class="nav-btn">Orders</button>
-        <button onclick="showTable('transactions')" class="nav-btn">Transactions</button>
-        <button onclick="showTable('customers')" class="nav-btn">Customers</button>
-        <button onclick="window.location.href='/employees'" class="nav-btn">Employees</button>
-        {% if session.role == 'admin' %}
-        <button onclick="showTable('accounting')" class="nav-btn">Accounting AI</button>
-        {% endif %}
-    </div>
-
-    <div class="header">
-        <h1>Laundry Management System</h1>
-        <div class="header-buttons">
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="brand">
+    <h1>Laundry Management System</h1>
+        </div>
+        <div class="nav-actions">
             {% if session.role == 'admin' %}
-            <a href="/dashboard" class="upload-btn">Dashboard</a>
-            <a href="/admin" class="upload-btn">Admin Panel</a>
+            <a href="/dashboard" class="nav-btn"><i class="fas fa-chart-line"></i> Dashboard</a>
+            <a href="/admin" class="nav-btn"><i class="fas fa-cog"></i> Admin</a>
             {% endif %}
-            <a href="/transaction" class="upload-btn">Add Transaction</a>
-            <a href="/upload" class="upload-btn" style="margin-left: 10px;">Upload Data</a>
-            <a href="/logout" class="upload-btn" style="margin-left: 10px;">Logout</a>
+            <a href="/transaction" class="nav-btn"><i class="fas fa-plus"></i> New Transaction</a>
+            <a href="/upload" class="nav-btn"><i class="fas fa-upload"></i> Upload</a>
+            <a href="/logout" class="nav-btn nav-btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="main-container">
+        <!-- Side Navigation -->
+        <div class="side-nav">
+            <button onclick="showTable('orders')" class="side-nav-btn" id="ordersBtn">
+                <i class="fas fa-shopping-cart"></i> Orders
+            </button>
+            <button onclick="showTable('transactions')" class="side-nav-btn" id="transactionsBtn">
+                <i class="fas fa-exchange-alt"></i> Transactions
+            </button>
+            <button onclick="showTable('customers')" class="side-nav-btn" id="customersBtn">
+                <i class="fas fa-users"></i> Customers
+            </button>
+            <button onclick="location.href='/employees'" class="side-nav-btn" id="employeesBtn">
+                <i class="fas fa-user-tie"></i> Employees
+            </button>
+            {% if session.role == 'admin' %}
+            <button onclick="showTable('accounting')" class="side-nav-btn" id="accountingBtn">
+                <i class="fas fa-calculator"></i> Accounting AI
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Orders Section -->
+            <div id="orders-section" class="section-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-shopping-cart"></i> Orders</h2>
+                    <div class="filter-group">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="orderSearch" placeholder="Search orders...">
+                        </div>
+                        <div class="date-filter-group">
+                            <label>Order Date Range:</label>
+                            <div class="date-inputs">
+                                <input type="date" id="orderStartDate" placeholder="Start Date">
+                                <span>to</span>
+                                <input type="date" id="orderEndDate" placeholder="End Date">
+                            </div>
+                        </div>
+                        <div class="date-filter-group">
+                            <label>Due Date Range:</label>
+                            <div class="date-inputs">
+                                <input type="date" id="orderDueStartDate" placeholder="Due Start Date">
+                                <span>to</span>
+                                <input type="date" id="orderDueEndDate" placeholder="Due End Date">
+                            </div>
+                        </div>
+                        <select id="statusFilter" class="status-filter">
+                            <option value="all">All Status</option>
+                            <option value="Unprocessed">Unprocessed</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Ready">Ready</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="On Hold">On Hold</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>Order No</th>
+                                <th>Customer</th>
+                                <th>Order Date</th>
+                                <th>Due Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Orders will be loaded here -->
+                        </tbody>
+                    </table>
+    </div>
+</div>
+
+            <!-- Customers Section -->
+            <div id="customers-section" class="section-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> Customers</h2>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="customerSearch" placeholder="Search customers...">
+                    </div>
+    </div>
+                <div class="table-container">
+                    <table id="customersTable">
+            <thead>
+                <tr>
+                    <th>Customer Code</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Area Location</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+                </div>
     </div>
 
-    <div id="loading-overlay" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Loading...</div>
-    </div>
-
-    <div id="tables-container">
-        <div class="tab-buttons">
-            <button class="tab-btn active" onclick="showTable('customers')">Customers</button>
-            <button class="tab-btn" onclick="showTable('orders')">Orders</button>
-            <button class="tab-btn" onclick="showTable('transactions')">Transactions</button>
-        </div>
-
-        <div id="customers-section" class="table-section active">
-            <h2>Customers</h2>
-            <div class="search-box">
-                <input type="text" id="customerSearch" placeholder="Search by customer name..." onkeyup="filterCustomers()">
-            </div>
-            <table id="customersTable" border="1">
-                <thead>
-                    <tr>
-                        <th>Customer Code</th>
-                        <th>Name</th>
-                        <th>Phone</th>
-                        <th>Address</th>
-                        <th>Area Location</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div id="orders-section" class="table-section">
-            <h2>Orders</h2>
-            <div class="filters-container">
-                <div class="search-box">
-                    <input type="text" id="orderNoSearch" placeholder="Search by order number..." onkeyup="filterOrders()">
-                </div>
-                <div class="search-box">
-                    <input type="text" id="orderSearch" placeholder="Search by customer name..." onkeyup="filterOrders()">
-                </div>
-                <div class="date-filters">
-                    <input type="date" id="startDate" onchange="filterOrders()">
-                    <span>to</span>
-                    <input type="date" id="endDate" onchange="filterOrders()">
-                </div>
-                <div class="status-filter">
-                    <select id="statusFilter" onchange="filterOrders()">
-                        <option value="">All Statuses</option>
-                        <option value="Unprocessed">Unprocessed</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Processing">Processing</option>
-                        <option value="Ready">Ready</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                </div>
-            </div>
-            <table id="ordersTable" border="1">
-                <thead>
-                    <tr>
-                        <th>Order No</th>
-                        <th>Customer</th>
-                        <th>Order Date</th>
-                        <th>Due Date</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div id="transactions-section" class="table-section">
-            <h2>Transactions</h2>
-            <div class="filters-container">
-                <div class="search-box">
-                    <input type="text" id="transactionSearch" placeholder="Search by order number..." onkeyup="filterTransactions()">
-                </div>
-                <div class="date-filters">
-                    <input type="date" id="transStartDate" onchange="filterTransactions()">
-                    <span>to</span>
-                    <input type="date" id="transEndDate" onchange="filterTransactions()">
-                </div>
-                <div class="source-filter">
-                    <select id="sourceFilter" onchange="filterTransactions()">
-                        <option value="">All Sources</option>
-                        <option value="manual">Manual Entry</option>
-                        <option value="csv">CSV Import</option>
-                    </select>
-                </div>
-                {% if session.role == 'admin' %}
-                <div class="admin-actions">
-                    <button class="cleanup-btn" onclick="cleanupTransactions()">
-                        <i class="fas fa-broom"></i> Remove Invalid Orders
-                    </button>
-                    <button class="export-btn" onclick="exportManualTransactions()">
-                        <i class="fas fa-file-export"></i> Export Manual Entries
-                    </button>
-                </div>
-                {% endif %}
-            </div>
-            <table id="transactionsTable" border="1">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Order No</th>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>Payment Mode</th>
-                        <th>Reference No</th>
-                        <th>Description</th>
-                        <th>Notes</th>
-                        <th>Source</th>
+            <!-- Transactions Section -->
+            <div id="transactions-section" class="section-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-exchange-alt"></i> Transactions</h2>
+                    <div class="filter-group">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="transactionSearch" placeholder="Search by order number...">
+                        </div>
+                        <div class="date-filters">
+                            <input type="date" id="transStartDate" placeholder="Start Date">
+                            <input type="date" id="transEndDate" placeholder="End Date">
+                        </div>
+                        <select id="sourceFilter" class="source-filter">
+                            <option value="all">All Sources</option>
+                            <option value="manual">Manual Entry</option>
+                            <option value="csv">CSV Import</option>
+                        </select>
                         {% if session.role == 'admin' %}
-                        <th>Actions</th>
+                        <div class="action-buttons">
+                            <button class="btn-warning" onclick="cleanupTransactions()">
+                                <i class="fas fa-broom"></i> Cleanup
+                            </button>
+                            <button class="btn-info" onclick="exportManualTransactions()">
+                                <i class="fas fa-file-export"></i> Export
+                            </button>
+                        </div>
                         {% endif %}
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+                    </div>
+                </div>
+                <div class="bulk-actions" style="display: none;">
+                    <button class="btn-danger" onclick="deleteSelectedTransactions()">
+                        <i class="fas fa-trash"></i> Delete Selected (<span id="selectedCount">0</span>)
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table id="transactionsTable" class="data-table">
+            <thead>
+                <tr>
+                    <th>
+                        <input type="checkbox" id="selectAllTransactions" onclick="toggleAllTransactions(this)">
+                    </th>
+                    <th>Date</th>
+                    <th>Order No</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Payment Mode</th>
+                    <th>Reference No</th>
+                    <th>Description</th>
+                    <th>Notes</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+            <!-- Add this inside content-area, as a new section -->
+            <div id="accounting-section" class="section-container">
+                <div class="section-header">
+                    <h2><i class="fas fa-calculator"></i> Accounting AI Assistant</h2>
+                </div>
+                
+                <div class="accounting-container">
+                    <!-- Left side: Chat Interface -->
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <!-- Messages will be added here dynamically -->
+                            <div class="message system">
+                                Hello! I'm your Accounting AI assistant. I can help you with:
+                                <ul>
+                                    <li>Daily transaction summaries</li>
+                                    <li>Monthly analysis</li>
+                                    <li>Anomaly detection</li>
+                                    <li>Balance sheet generation</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="chat-input-container">
+                            <select id="analysisType" class="analysis-select">
+                                <option value="daily">Daily Summary</option>
+                                <option value="monthly">Monthly Analysis</option>
+                                <option value="anomalies">Detect Anomalies</option>
+                                <option value="balance_sheet">Balance Sheet</option>
+                            </select>
+                            <input type="date" id="analysisDate" class="analysis-date">
+                            <button onclick="getAccountingInsights()" class="chat-send-btn">
+                                <i class="fas fa-paper-plane"></i> Get Insights
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right side: Quick Stats -->
+                    <div class="accounting-stats">
+                        <div class="stat-card">
+                            <h3>Today's Summary</h3>
+                            <div class="stat-content">
+                                <div class="stat-item">
+                                    <span class="stat-label">Income</span>
+                                    <span class="stat-value income">₹0.00</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Expenses</span>
+                                    <span class="stat-value expense">₹0.00</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Net</span>
+                                    <span class="stat-value">₹0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <h3>This Month</h3>
+                            <div class="stat-content">
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Income</span>
+                                    <span class="stat-value income">₹0.00</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Expenses</span>
+                                    <span class="stat-value expense">₹0.00</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Net Profit</span>
+                                    <span class="stat-value">₹0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add this inside the accounting section -->
+            <div class="daily-balance-section">
+                <h3>Daily Balance</h3>
+                <div class="balance-form">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="balanceDate" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Bank Balance</label>
+                        <input type="number" id="bankBalance" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Cash in Hand</label>
+                        <input type="number" id="cashInHand" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="balanceNotes" class="form-control"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Verified By</label>
+                        <input type="text" id="verifiedBy" class="form-control">
+                    </div>
+                    <button onclick="saveDailyBalance()" class="btn-primary">Save Balance</button>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading...</div>
     </div>
 </body>
 
 <script>
-function showTable(tableType) {
-    if (tableType === 'employees') {
-        window.location.href = '/employees';
-        return;
+// Debug flag
+const DEBUG = true;
+
+// Logger function
+function log(message, data = null) {
+    if (DEBUG) {
+        if (data) {
+            console.log(`[DEBUG] ${message}:`, data);
+        } else {
+            console.log(`[DEBUG] ${message}`);
+        }
     }
-    
+}
+
+// Error handler
+function handleError(error, context) {
+    console.error(`[ERROR] ${context}:`, error);
+    alert(`Error in ${context}: ${error.message}`);
+}
+
+// Add pagination constants
+const ITEMS_PER_PAGE = 100;
+let currentPage = {
+    orders: 1,
+    transactions: 1,
+    customers: 1
+};
+
+// Initialize page and active section
+function initializePage() {
+    try {
+        log('Initializing page');
+        
+        // Check if required elements exist
+        const ordersSection = document.getElementById('orders-section');
+        const ordersBtn = document.getElementById('ordersBtn');
+        
+        if (!ordersSection) throw new Error('Orders section not found in DOM');
+        if (!ordersBtn) throw new Error('Orders button not found in DOM');
+        
+        // Hide all sections first
+        const sections = document.querySelectorAll('.section-container');
+        log('Found sections:', sections.length);
+        
+        sections.forEach(section => {
+            section.style.display = 'none';
+            log('Hidden section:', section.id);
+        });
+
+        // Show orders section by default
+        ordersSection.style.display = 'block';
+        ordersBtn.classList.add('active');
+        log('Activated orders section');
+        
+        // Fetch initial orders data
+        fetchOrders();
+        
+    } catch (error) {
+        handleError(error, 'Page Initialization');
+    }
+}
+
+// Add at the beginning of your script section
+let selectedTransactions = new Set();
+
+// Add the showTable function
+function showTable(section) {
     // Hide all sections
-    document.querySelectorAll('.table-section').forEach(section => {
-        section.classList.remove('active');
+    document.querySelectorAll('.section-container').forEach(el => {
+        el.style.display = 'none';
     });
     
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    // Show selected section
+    document.getElementById(`${section}-section`).style.display = 'block';
+    
+    // Update active button
+    document.querySelectorAll('.side-nav-btn').forEach(btn => {
         btn.classList.remove('active');
     });
+    document.getElementById(`${section}Btn`).classList.add('active');
     
-    // Show selected section and activate button
-    document.getElementById(`${tableType}-section`).classList.add('active');
-    document.querySelector(`button[onclick="showTable('${tableType}')"]`).classList.add('active');
+    // Load data for the section
+    switch(section) {
+        case 'orders':
+            fetchOrders();
+            break;
+        case 'transactions':
+            fetchTransactions();
+            break;
+        case 'customers':
+            fetchCustomers();
+            break;
+        case 'accounting':
+            loadAccountingStats();
+            break;
+    }
+}
 
-    // Fetch data based on active tab
-    if (tableType === 'customers') {
-        fetchCustomers();
-    } else if (tableType === 'orders') {
-        fetchOrders();
-    } else if (tableType === 'transactions') {
-        fetchTransactions();
+// Add pagination controls HTML after each table
+function addPaginationControls(containerId, totalItems, currentPage, totalPages) {
+    const container = document.getElementById(containerId);
+    
+    const paginationHtml = `
+        <div class="pagination">
+            <button class="page-btn" onclick="changePage('${containerId}', ${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <span class="page-info">Page ${currentPage} of ${totalPages} (${totalItems} items)</span>
+            <button class="page-btn" onclick="changePage('${containerId}', ${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+    
+    const paginationDiv = container.querySelector('.pagination-controls') || document.createElement('div');
+    paginationDiv.className = 'pagination-controls';
+    paginationDiv.innerHTML = paginationHtml;
+    container.querySelector('.table-container').appendChild(paginationDiv);
+}
+
+// Add filtered data storage
+let filteredData = {
+    orders: [],
+    transactions: [],
+    customers: []
+};
+
+// Add current filter state object
+let currentFilters = {
+    orders: {
+        search: '',
+        startDate: '',
+        endDate: '',
+        dueStart: '',
+        dueEnd: '',
+        status: 'all'
+    },
+    transactions: {
+        search: '',
+        startDate: '',
+        endDate: '',
+        source: 'all'
+    }
+};
+
+// Update filterOrders function to store current filters
+async function filterOrders() {
+    try {
+        log('Filtering orders');
+        
+        // Update current filters
+        currentFilters.orders = {
+            search: document.getElementById('orderSearch')?.value || '',
+            startDate: document.getElementById('orderStartDate')?.value || '',
+            endDate: document.getElementById('orderEndDate')?.value || '',
+            dueStart: document.getElementById('orderDueStartDate')?.value || '',
+            dueEnd: document.getElementById('orderDueEndDate')?.value || '',
+            status: document.getElementById('statusFilter')?.value || 'all'
+        };
+        
+        // Build query parameters with current page
+        const params = new URLSearchParams({
+            page: currentPage.orders,
+            per_page: ITEMS_PER_PAGE,
+            ...currentFilters.orders
+        });
+        
+        // Fetch filtered data
+        await fetchOrders(params);
+        
+    } catch (error) {
+        handleError(error, 'Filter Orders');
+    }
+}
+
+// Update fetchOrders function
+async function fetchOrders(params = new URLSearchParams()) {
+    try {
+        log('Fetching orders with params:', params.toString());
+        showLoading('Loading orders...');
+        
+        const response = await fetch(`/api/orders?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch orders');
+        
+        const data = await response.json();
+        
+        // Update pagination info
+        const pagination = data.pagination;
+        currentPage.orders = pagination.page;
+        
+        // Display orders
+        displayOrders(data.orders, pagination);
+        
+    } catch (error) {
+        handleError(error, 'Fetch Orders');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Update displayOrders function
+function displayOrders(orders, pagination) {
+    try {
+        log('Displaying orders');
+        
+        const tbody = document.querySelector('#ordersTable tbody');
+        if (!tbody) throw new Error('Orders table body not found');
+        
+        tbody.innerHTML = '';
+        
+        orders.forEach((order, index) => {
+            try {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${order.order_no || 'N/A'}</td>
+                    <td>${order.customer_name || 'N/A'}</td>
+                    <td data-date="${order.order_date}">${new Date(order.order_date).toLocaleDateString()}</td>
+                    <td data-date="${order.due_date}">${order.due_date ? new Date(order.due_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>₹${(order.amount || 0).toFixed(2)}</td>
+                    <td>${order.status || 'Unprocessed'}</td>
+                `;
+                tbody.appendChild(row);
+            } catch (error) {
+                console.error(`Error displaying order at index ${index}:`, error);
+            }
+        });
+        
+        // Update pagination controls with server data
+        addPaginationControls('orders-section', pagination.total, pagination.page, pagination.pages);
+        
+    } catch (error) {
+        handleError(error, 'Display Orders');
+    }
+}
+
+// Fetch transactions data
+async function fetchTransactions(page = 1) {
+    try {
+        log('Fetching transactions');
+        showLoading('Loading transactions...');
+        
+        // Get current filter values
+        const search = document.getElementById('transactionSearch').value;
+        const startDate = document.getElementById('transStartDate').value;
+        const endDate = document.getElementById('transEndDate').value;
+        const source = document.getElementById('sourceFilter').value;
+
+        // Build query parameters
+        const params = new URLSearchParams({
+            page: page,
+            per_page: ITEMS_PER_PAGE,
+            search: search,
+            start_date: startDate,
+            end_date: endDate,
+            source: source
+        });
+        
+        const response = await fetch(`/api/transactions?${params}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        log('Received transactions:', data.transactions.length);
+        
+        displayTransactions(data.transactions);
+        
+        // Add pagination controls
+        addPaginationControls(
+            'transactions-section', 
+            data.pagination.total, 
+            data.pagination.page, 
+            data.pagination.pages
+        );
+        
+    } catch (error) {
+        handleError(error, 'Fetch Transactions');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Display transactions in table
+function displayTransactions(transactions) {
+    try {
+        log('Displaying transactions');
+        
+        const tbody = document.querySelector('#transactionsTable tbody');
+        if (!tbody) throw new Error('Transactions table body not found');
+        
+        tbody.innerHTML = '';
+        
+        if (!Array.isArray(transactions)) {
+            throw new Error('Transactions data is not an array');
+        }
+        
+        transactions.forEach((transaction, index) => {
+            try {
+                const row = document.createElement('tr');
+                row.dataset.id = transaction.id;
+                row.className = 'transaction-row';
+                
+                // Format transaction date
+                const transDateStr = transaction.transaction_date;
+                let formattedTransDate = 'N/A';
+                if (transDateStr) {
+                    const [day, month, year] = transDateStr.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    if (!isNaN(date)) {
+                        formattedTransDate = date.toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+                    }
+                }
+                
+                const source = transaction.source !== undefined ? transaction.source.toLowerCase() : 'manual';
+                
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" 
+                               class="transaction-checkbox"
+                               data-id="${transaction.id}"
+                               onclick="toggleTransactionSelection(this, '${transaction.id}')"
+                               ${selectedTransactions.has(transaction.id.toString()) ? 'checked' : ''}>
+                    </td>
+                    <td data-date="${transDateStr || ''}">${formattedTransDate}</td>
+                    <td>${transaction.order_no || 'N/A'}</td>
+                    <td>${transaction.transaction_type || 'N/A'}</td>
+                    <td>₹${(transaction.amount || 0).toFixed(2)}</td>
+                    <td>${transaction.payment_mode || 'N/A'}</td>
+                    <td>${transaction.reference_no || 'N/A'}</td>
+                    <td>${transaction.description || 'N/A'}</td>
+                    <td>${transaction.notes || 'N/A'}</td>
+                    <td><span class="badge ${source}">${source.charAt(0).toUpperCase() + source.slice(1)}</span></td>
+                `;
+                tbody.appendChild(row);
+                
+            } catch (error) {
+                console.error(`Error displaying transaction at index ${index}:`, error);
+                console.error('Problematic transaction:', transaction);
+            }
+        });
+        
+        // Update bulk actions visibility
+        updateBulkActionsVisibility();
+        
+    } catch (error) {
+        handleError(error, 'Display Transactions');
+    }
+}
+
+// Add fetchCustomers and displayCustomers functions too
+async function fetchCustomers() {
+    try {
+        log('Fetching customers');
+        showLoading('Loading customers...');
+        
+        const response = await fetch('/api/customers');
+        log('Customers API response status:', response.status);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const customers = await response.json();
+        log('Received customers:', customers.length);
+        
+        displayCustomers(customers);
+        
+    } catch (error) {
+        handleError(error, 'Fetch Customers');
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayCustomers(customers) {
+    try {
+        log('Displaying customers');
+        
+        const tbody = document.querySelector('#customersTable tbody');
+        if (!tbody) throw new Error('Customers table body not found');
+        
+        tbody.innerHTML = '';
+        
+        if (!Array.isArray(customers)) {
+            throw new Error('Customers data is not an array');
+        }
+        
+        customers.forEach((customer, index) => {
+            try {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+                    <td>${customer.customer_code || 'N/A'}</td>
+                    <td>${customer.name || 'N/A'}</td>
+                    <td>${customer.phone || 'N/A'}</td>
+                    <td>${customer.address || 'N/A'}</td>
+                    <td>${customer.area_location || 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+            } catch (error) {
+                console.error(`Error displaying customer at index ${index}:`, error);
+            }
+        });
+        
+        log('Customers display complete');
+        
+    } catch (error) {
+        handleError(error, 'Display Customers');
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    log('DOM loaded');
+    initializePage();
+
+    // Add date range change handlers
+    const dateRangeInputs = [
+        'orderStartDate',
+        'orderEndDate',
+        'orderDueStartDate',
+        'orderDueEndDate'
+    ];
+
+    dateRangeInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('change', async (e) => {
+                e.preventDefault();
+                
+                // Get the paired date input
+                const isStart = id.includes('Start');
+                const pairedId = isStart ? 
+                    id.replace('Start', 'End') : 
+                    id.replace('End', 'Start');
+                const pairedInput = document.getElementById(pairedId);
+                
+                // Validate date range
+                if (pairedInput?.value) {
+                    const startDate = isStart ? e.target.value : pairedInput.value;
+                    const endDate = isStart ? pairedInput.value : e.target.value;
+                    
+                    if (new Date(startDate) > new Date(endDate)) {
+                        alert('Start date cannot be after end date');
+                        e.target.value = '';
+                        return;
+                    }
+                }
+                
+                // Apply filters
+                await filterOrders();
+            });
+        }
+    });
+
+    // Add event listeners for transaction filters
+    const transactionSearch = document.getElementById('transactionSearch');
+    transactionSearch?.addEventListener('input', debounce(filterTransactions, 300));
+
+    // Transaction date filters
+    const transStartDate = document.getElementById('transStartDate');
+    const transEndDate = document.getElementById('transEndDate');
+    transStartDate?.addEventListener('change', filterTransactions);
+    transEndDate?.addEventListener('change', filterTransactions);
+
+    // Source filter
+    const sourceFilter = document.getElementById('sourceFilter');
+    sourceFilter?.addEventListener('change', filterTransactions);
+});
+
+// Loading overlay functions
+function showLoading(message) {
+    try {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) throw new Error('Loading overlay not found');
+        
+        const loadingText = overlay.querySelector('.loading-text');
+        if (loadingText) loadingText.textContent = message;
+        
+        overlay.style.display = 'flex';
+        log('Showing loading:', message);
+    } catch (error) {
+        handleError(error, 'Show Loading');
+    }
+}
+
+function hideLoading() {
+    try {
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) throw new Error('Loading overlay not found');
+        
+        overlay.style.display = 'none';
+        log('Hidden loading');
+    } catch (error) {
+        handleError(error, 'Hide Loading');
     }
 }
 
@@ -186,212 +1334,6 @@ function filterCustomers() {
     rows.forEach(row => {
         const customerName = row.children[1].textContent.toLowerCase(); // Index 1 is Name column
         row.style.display = customerName.includes(searchText) ? '' : 'none';
-    });
-}
-
-function filterOrders() {
-    const orderNoText = document.getElementById('orderNoSearch').value.toLowerCase();
-    const customerText = document.getElementById('orderSearch').value.toLowerCase();
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    const statusFilter = document.getElementById('statusFilter').value;
-    
-    const rows = document.querySelectorAll('#ordersTable tbody tr');
-    
-    rows.forEach(row => {
-        const orderNo = row.children[0].textContent.toLowerCase();
-        const customerName = row.children[1].textContent.toLowerCase();
-        const orderDate = new Date(row.children[2].getAttribute('data-date'));
-        const status = row.children[5].textContent;
-        
-        let showRow = true;
-        
-        // Check order number
-        if (orderNoText && !orderNo.includes(orderNoText)) {
-            showRow = false;
-        }
-        
-        // Check customer name
-        if (customerText && !customerName.includes(customerText)) {
-            showRow = false;
-        }
-        
-        // Check date range
-        if (startDate && new Date(startDate) > orderDate) {
-            showRow = false;
-        }
-        if (endDate && new Date(endDate) < orderDate) {
-            showRow = false;
-        }
-        
-        // Check status
-        if (statusFilter && status !== statusFilter) {
-            showRow = false;
-        }
-        
-        row.style.display = showRow ? '' : 'none';
-    });
-}
-
-// Update your existing fetch functions to store data globally
-let customersData = [];
-let ordersData = [];
-
-function fetchCustomers() {
-    showLoading('Loading customers...');
-    fetch('/customers')
-        .then(response => response.json())
-        .then(customers => {
-            customersData = customers;
-            displayCustomers(customers);
-        })
-        .catch(error => {
-            console.error('Error fetching customers:', error);
-            alert('Failed to load customers. Please try again.');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-}
-
-function displayCustomers(customers) {
-    const tbody = document.querySelector('#customersTable tbody');
-    tbody.innerHTML = '';
-    customers.forEach(customer => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${customer.customer_code}</td>
-            <td>${customer.name}</td>
-            <td>${customer.phone || '-'}</td>
-            <td>${customer.address || '-'}</td>
-            <td>${customer.area_location || '-'}</td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-function fetchOrders() {
-    showLoading('Loading orders...');
-    fetch('/orders')
-        .then(response => response.json())
-        .then(orders => {
-            ordersData = orders;
-            displayOrders(orders);
-        })
-        .catch(error => {
-            console.error('Error fetching orders:', error);
-            alert('Failed to load orders. Please try again.');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-}
-
-function displayOrders(orders) {
-    const tbody = document.querySelector('#ordersTable tbody');
-    tbody.innerHTML = '';
-    orders.forEach(order => {
-        const row = document.createElement('tr');
-        const orderDate = new Date(order.order_date);
-        const dueDate = order.due_date ? new Date(order.due_date).toLocaleDateString() : '-';
-        row.innerHTML = `
-            <td>${order.order_no}</td>
-            <td>${order.customer_name || '-'}</td>
-            <td data-date="${order.order_date}">${orderDate.toLocaleDateString()}</td>
-            <td>${dueDate}</td>
-            <td>₹${order.net_amount || order.gross_amount || 0}</td>
-            <td>${order.order_status || 'Unprocessed'}</td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-// Add transaction filter function
-function filterTransactions() {
-    const searchText = document.getElementById('transactionSearch').value.toLowerCase();
-    const startDate = document.getElementById('transStartDate').value;
-    const endDate = document.getElementById('transEndDate').value;
-    const sourceType = document.getElementById('sourceFilter').value;
-    const rows = document.querySelectorAll('#transactionsTable tbody tr');
-    
-    rows.forEach(row => {
-        const orderNo = row.children[1].textContent.toLowerCase();
-        const rowDate = row.children[0].getAttribute('data-date');
-        const source = row.querySelector('.badge').textContent.toLowerCase();
-        
-        let showRow = true;
-        
-        // Filter by search text
-        if (searchText && !orderNo.includes(searchText)) {
-            showRow = false;
-        }
-        
-        // Filter by date range
-        if (startDate && rowDate < startDate) {
-            showRow = false;
-        }
-        if (endDate && rowDate > endDate) {
-            showRow = false;
-        }
-        
-        // Filter by source type
-        if (sourceType && source !== sourceType) {
-            showRow = false;
-        }
-        
-        row.style.display = showRow ? '' : 'none';
-    });
-}
-
-// Update transactions fetch function to store data globally
-let transactionsData = [];
-
-function fetchTransactions() {
-    showLoading('Loading transactions...');
-    fetch('/transactions')
-        .then(response => response.json())
-        .then(transactions => {
-            transactionsData = transactions;
-            displayTransactions(transactions);
-        })
-        .catch(error => {
-            console.error('Error fetching transactions:', error);
-            alert('Failed to load transactions. Please try again.');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-}
-
-function displayTransactions(transactions) {
-    const tbody = document.querySelector('#transactionsTable tbody');
-    tbody.innerHTML = '';
-    transactions.forEach(txn => {
-        const row = document.createElement('tr');
-        const date = new Date(txn.transaction_date);
-        const typeClass = txn.transaction_type === 'Income' ? 'income-type' : 'expense-type';
-        
-        row.innerHTML = `
-            <td data-date="${txn.transaction_date}">${date.toLocaleDateString()}</td>
-            <td>${txn.order_no || '-'}</td>
-            <td class="${typeClass}">${txn.transaction_type || '-'}</td>
-            <td>₹${txn.amount.toFixed(2)}</td>
-            <td>${txn.payment_mode || '-'}</td>
-            <td>${txn.reference_no || '-'}</td>
-            <td>${txn.description || '-'}</td>
-            <td>${txn.notes || '-'}</td>
-            <td><span class="badge ${txn.source}">${txn.source}</span></td>
-            ${isAdmin ? `
-            <td>
-                ${txn.source === 'manual' ? `
-                <button class="delete-btn" onclick="deleteTransaction(${txn.id})">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-                ` : '-'}
-            </td>
-            ` : ''}
-        `;
-        tbody.appendChild(row);
     });
 }
 
@@ -422,20 +1364,16 @@ async function deleteTransaction(id) {
 // Add admin check variable
 const isAdmin = {{ 'true' if session.role == 'admin' else 'false' | tojson }};
 
-// Initial data load
-fetchCustomers();
-
 // Add these loading utility functions
 function showLoading(message = 'Loading...') {
     const overlay = document.getElementById('loading-overlay');
     const text = overlay.querySelector('.loading-text');
     text.textContent = message;
-    overlay.classList.add('active');
+    overlay.style.display = 'flex';
 }
 
 function hideLoading() {
-    const overlay = document.getElementById('loading-overlay');
-    overlay.classList.remove('active');
+    document.getElementById('loading-overlay').style.display = 'none';
 }
 
 async function cleanupTransactions() {
@@ -502,313 +1440,269 @@ async function exportManualTransactions() {
         hideLoading();
     }
 }
+
+// Add accounting initialization function
+async function initializeAccounting() {
+    try {
+        log('Initializing accounting section');
+        showLoading('Loading accounting data...');
+        
+        const response = await fetch('/api/accounting/stats');
+        if (!response.ok) {
+            throw new Error('Failed to fetch accounting stats');
+        }
+        
+        const stats = await response.json();
+        updateAccountingStats(stats);
+        
+    } catch (error) {
+        handleError(error, 'Initialize Accounting');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Add accounting insights function
+async function getAccountingInsights() {
+    const type = document.getElementById('analysisType').value;
+    const date = document.getElementById('analysisDate').value;
+    const chatMessages = document.getElementById('chatMessages');
+
+    try {
+        showLoading('Getting insights...');
+        
+        const response = await fetch(`/api/accounting/insights?type=${type}&date=${date}`);
+        if (!response.ok) {
+            throw new Error('Failed to get insights');
+        }
+        
+        const data = await response.json();
+
+        // Add user query to chat
+        const userMsg = document.createElement('div');
+        userMsg.className = 'message user';
+        userMsg.textContent = `Get ${type} analysis ${date ? 'for ' + date : ''}`;
+        chatMessages.appendChild(userMsg);
+
+        // Add AI response to chat
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'message ai';
+        aiMsg.textContent = data.insights;
+        chatMessages.appendChild(aiMsg);
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    } catch (error) {
+        handleError(error, 'Get Accounting Insights');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Add accounting stats update function
+function updateAccountingStats(stats) {
+    try {
+        // Update today's stats
+        document.querySelector('.stat-card:nth-child(1) .income').textContent = 
+            `₹${stats.today.income.toFixed(2)}`;
+        document.querySelector('.stat-card:nth-child(1) .expense').textContent = 
+            `₹${stats.today.expenses.toFixed(2)}`;
+        document.querySelector('.stat-card:nth-child(1) .stat-value:last-child').textContent = 
+            `₹${(stats.today.income - stats.today.expenses).toFixed(2)}`;
+            
+        // Update monthly stats
+        document.querySelector('.stat-card:nth-child(2) .income').textContent = 
+            `₹${stats.month.income.toFixed(2)}`;
+        document.querySelector('.stat-card:nth-child(2) .expense').textContent = 
+            `₹${stats.month.expenses.toFixed(2)}`;
+        document.querySelector('.stat-card:nth-child(2) .stat-value:last-child').textContent = 
+            `₹${(stats.month.income - stats.month.expenses).toFixed(2)}`;
+            
+    } catch (error) {
+        handleError(error, 'Update Accounting Stats');
+    }
+}
+
+// Load daily balance for a date
+async function loadDailyBalance() {
+    try {
+        const date = document.getElementById('balanceDate').value;
+        const response = await fetch(`/api/daily-balance?date=${date}`);
+        if (!response.ok) throw new Error('Failed to load balance');
+        
+        const data = await response.json();
+        
+        document.getElementById('bankBalance').value = data.bank_balance;
+        document.getElementById('cashInHand').value = data.cash_in_hand;
+        document.getElementById('balanceNotes').value = data.notes;
+        document.getElementById('verifiedBy').value = data.verified_by;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load balance: ' + error.message);
+    }
+}
+
+// Save daily balance
+async function saveDailyBalance() {
+    try {
+        const data = {
+            date: document.getElementById('balanceDate').value,
+            bank_balance: parseFloat(document.getElementById('bankBalance').value),
+            cash_in_hand: parseFloat(document.getElementById('cashInHand').value),
+            notes: document.getElementById('balanceNotes').value,
+            verified_by: document.getElementById('verifiedBy').value
+        };
+        
+        const response = await fetch('/api/daily-balance', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error('Failed to save balance');
+        
+        alert('Balance saved successfully!');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to save balance: ' + error.message);
+    }
+}
+
+// Set today's date by default and load balance
+document.getElementById('balanceDate').valueAsDate = new Date();
+document.getElementById('balanceDate').addEventListener('change', loadDailyBalance);
+loadDailyBalance();
+
+// Update changePage function to include current filters
+function changePage(section, newPage) {
+    const sectionKey = section.replace('-section', '');
+    currentPage[sectionKey] = newPage;
+    
+    switch(sectionKey) {
+        case 'orders':
+            fetchOrders(newPage);
+            break;
+        case 'transactions':
+            fetchTransactions(newPage);
+            break;
+        case 'customers':
+            fetchCustomers(newPage);
+            break;
+    }
+}
+
+// Add new function to handle bulk delete
+async function deleteSelectedTransactions() {
+    const selectedIds = Array.from(selectedTransactions);
+    
+    if (selectedIds.length === 0) {
+        alert('No transactions selected for deletion');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} transactions?`)) {
+        return;
+    }
+    
+    try {
+        showLoading('Deleting transactions...');
+        const response = await fetch('/api/transactions/bulk-delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete transactions');
+        }
+        
+        // Clear selections and refresh
+        selectedTransactions.clear();
+        updateBulkActionsVisibility();
+        await fetchTransactions();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete transactions: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Add new function to handle toggle all transactions
+function toggleAllTransactions(checkbox) {
+    const checkboxes = document.querySelectorAll('#transactionsTable tbody input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+        const row = cb.closest('tr');
+        const transactionId = row.dataset.id;
+        
+        if (checkbox.checked) {
+            selectedTransactions.add(transactionId);
+            row.classList.add('selected');
+        } else {
+            selectedTransactions.delete(transactionId);
+            row.classList.remove('selected');
+        }
+    });
+    updateBulkActionsVisibility();
+}
+
+function toggleTransactionSelection(checkbox, transactionId) {
+    const row = checkbox.closest('tr');
+    
+    if (checkbox.checked) {
+        selectedTransactions.add(transactionId);
+        row.classList.add('selected');
+    } else {
+        selectedTransactions.delete(transactionId);
+        row.classList.remove('selected');
+        document.getElementById('selectAllTransactions').checked = false;
+    }
+    
+    updateBulkActionsVisibility();
+}
+
+function updateBulkActionsVisibility() {
+    const bulkActions = document.querySelector('.bulk-actions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    selectedCount.textContent = selectedTransactions.size;
+    bulkActions.style.display = selectedTransactions.size > 0 ? 'flex' : 'none';
+}
+
+// Add filter function for transactions
+async function filterTransactions() {
+    try {
+        // Reset to first page when filtering
+        currentPage.transactions = 1;
+        await fetchTransactions(1);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to filter transactions: ' + error.message);
+    }
+}
+
+// Add debounce utility function if not already present
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 </script>
-
-<style>
-#tables-container {
-    margin-top: 30px;
-}
-
-.tab-buttons {
-    margin-bottom: 20px;
-}
-
-.tab-btn {
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    background-color: #f2f2f2;
-    border: none;
-    border-radius: 4px;
-    margin-right: 10px;
-}
-
-.tab-btn.active {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.table-section {
-    display: none;
-}
-
-.table-section.active {
-    display: block;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 30px;
-}
-
-th, td {
-    padding: 10px;
-    text-align: left;
-}
-
-th {
-    background-color: #f2f2f2;
-}
-
-tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-tr:hover {
-    background-color: #f5f5f5;
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding: 20px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.header h1 {
-    margin: 0;
-}
-
-.upload-btn {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 20px;
-    text-decoration: none;
-    border-radius: 4px;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.upload-btn:hover {
-    background-color: #45a049;
-}
-
-.badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: bold;
-    text-transform: uppercase;
-}
-
-.badge.manual {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.badge.csv {
-    background-color: #2196F3;
-    color: white;
-}
-
-.search-box {
-    margin-bottom: 20px;
-}
-
-.search-box input {
-    width: 300px;
-    padding: 8px;
-    font-size: 14px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.search-box input:focus {
-    outline: none;
-    border-color: #4CAF50;
-    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
-}
-
-.filters-container {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.date-filters {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.date-filters input[type="date"] {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.status-filter select {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    min-width: 150px;
-}
-
-.status-filter select:focus,
-.date-filters input[type="date"]:focus {
-    outline: none;
-    border-color: #4CAF50;
-    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
-}
-
-.loading-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.8);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-}
-
-.loading-overlay.active {
-    display: flex;
-}
-
-.loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #4CAF50;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 10px;
-}
-
-.loading-text {
-    color: #4CAF50;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.income-type {
-    color: #28a745;
-    font-weight: bold;
-}
-
-.expense-type {
-    color: #dc3545;
-    font-weight: bold;
-}
-
-.delete-btn {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.delete-btn:hover {
-    background-color: #c82333;
-}
-
-/* Add Font Awesome for the trash icon */
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-.source-filter select {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    min-width: 150px;
-}
-
-.source-filter select:focus {
-    outline: none;
-    border-color: #4CAF50;
-    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
-}
-
-.cleanup-btn {
-    background-color: #ffc107;
-    color: #000;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.cleanup-btn:hover {
-    background-color: #e0a800;
-}
-
-.admin-actions {
-    display: flex;
-    gap: 10px;
-    margin-left: auto;
-}
-
-.export-btn {
-    background-color: #17a2b8;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.export-btn:hover {
-    background-color: #138496;
-}
-
-.nav-buttons {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.nav-btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    background-color: #4CAF50;
-    color: white;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.nav-btn:hover {
-    background-color: #45a049;
-}
-
-.nav-btn.active {
-    background-color: #357a38;
-}
-</style>
-
-{% if show_accounting_chat %}
-    {% include 'accounting_chat.html' %}
-{% endif %}
 
 
 

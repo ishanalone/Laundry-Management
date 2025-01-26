@@ -1,7 +1,7 @@
 from flask import jsonify, request, send_from_directory, render_template, session, redirect, url_for, send_file
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
-from models import Customer, Sales, Accounts, User, Employee
+from models import Customer, Sales, Accounts, User, Employee, DailyBalance
 from extensions import db
 from constants import (
     TRANSACTION_TYPES,
@@ -14,7 +14,8 @@ from functools import wraps
 from services.whatsapp_service import WhatsAppService
 from services.accounting_ai_service import AccountingAIAgent
 import csv
-from io import StringIO
+from io import BytesIO, StringIO
+import pandas as pd
 
 def login_required(f):
     @wraps(f)
@@ -64,7 +65,7 @@ def init_routes(app):
     @app.route('/')
     @login_required
     def index():
-        return render_template('display.html', show_accounting_chat=True)
+        return render_template('display.html')
 
     @app.route('/upload')
     def upload_page():
@@ -74,23 +75,158 @@ def init_routes(app):
     def transaction_page():
         return render_template('transaction_form.html')
 
-    @app.route('/customers', methods=['GET'])
+    @app.route('/api/customers')
     def get_customers():
+        customers = Customer.query.all()
+        return jsonify([{
+            'customer_code': c.customer_code,
+            'name': c.name,
+            'phone': c.phone,
+            'address': c.address,
+            'area_location': c.area_location
+        } for c in customers])
+
+    @app.route('/api/orders')
+    def get_orders():
         try:
-            customers = Customer.query.all()
-            return jsonify([{
-                'id': c.id,
-                'customer_code': c.customer_code,
-                'name': c.name,
-                'address': c.address,
-                'phone': c.phone,
-                'preference': c.preference,
-                'gstin': c.gstin,
-                'area_location': c.area_location,
-                'registration_source': c.registration_source,
-                'created_at': c.created_at.isoformat() if c.created_at else None
-            } for c in customers]), 200
+            # Get filter parameters from request
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 100, type=int)
+            search = request.args.get('search', '').lower()
+            start_date = request.args.get('start_date')
+            end_date = request.args.get('end_date')
+            due_start = request.args.get('due_start')
+            due_end = request.args.get('due_end')
+            status = request.args.get('status')
+
+            # Build query
+            query = Sales.query.order_by(Sales.order_date.desc())
+
+            # Apply filters
+            if search:
+                query = query.join(Customer).filter(
+                    or_(
+                        Sales.order_no.ilike(f'%{search}%'),
+                        Customer.name.ilike(f'%{search}%')
+                    )
+                )
+            
+            if start_date:
+                query = query.filter(Sales.order_date >= datetime.strptime(start_date, '%Y-%m-%d'))
+            if end_date:
+                query = query.filter(Sales.order_date <= datetime.strptime(end_date, '%Y-%m-%d'))
+            
+            if due_start:
+                query = query.filter(Sales.due_date >= datetime.strptime(due_start, '%Y-%m-%d'))
+            if due_end:
+                query = query.filter(Sales.due_date <= datetime.strptime(due_end, '%Y-%m-%d'))
+            
+            if status and status != 'all':
+                query = query.filter(Sales.order_status == status)
+
+            # Get total count before pagination
+            total_count = query.count()
+
+            # Apply pagination
+            orders = query.paginate(page=page, per_page=per_page, error_out=False)
+
+            return jsonify({
+                'orders': [{
+                    'order_no': o.order_no,
+                    'customer_name': o.customer.name if o.customer else '-',
+                    'order_date': o.order_date.isoformat() if o.order_date else None,
+                    'due_date': o.due_date.isoformat() if o.due_date else None,
+                    'amount': float(o.net_amount or o.gross_amount or 0),
+                    'status': o.order_status or 'Unprocessed'
+                } for o in orders.items],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'pages': orders.pages
+                }
+            })
+
         except Exception as e:
+            app.logger.error(f"Error getting orders: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/transactions')
+    def get_transactions():
+        try:
+            # Get pagination parameters
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 100, type=int)
+            
+            # Get filter parameters
+            search = request.args.get('search', '').lower()
+            start_date = request.args.get('start_date')
+            end_date = request.args.get('end_date')
+            source = request.args.get('source')
+
+            # Build query
+            query = Accounts.query
+
+            # Apply filters
+            if search:
+                query = query.filter(
+                    or_(
+                        Accounts.order_no.ilike(f'%{search}%'),
+                        Accounts.description.ilike(f'%{search}%'),
+                        Accounts.notes.ilike(f'%{search}%')
+                    )
+                )
+            
+            if start_date:
+                query = query.filter(Accounts.transaction_date >= datetime.strptime(start_date, '%Y-%m-%d'))
+            if end_date:
+                query = query.filter(Accounts.transaction_date <= datetime.strptime(end_date, '%Y-%m-%d'))
+            
+            if source and source != 'all':
+                query = query.filter(Accounts.source == source)
+
+            # Order by date
+            query = query.order_by(Accounts.transaction_date.desc())
+            
+            # Get total count before pagination
+            total_count = query.count()
+            
+            # Apply pagination
+            transactions = query.paginate(page=page, per_page=per_page, error_out=False)
+            
+            def format_date(date):
+                if not date:
+                    return None
+                try:
+                    if isinstance(date, str):
+                        date = pd.to_datetime(date, dayfirst=True)
+                    return date.strftime('%d-%m-%Y')
+                except Exception as e:
+                    app.logger.error(f"Error formatting date {date}: {str(e)}")
+                    return None
+
+            return jsonify({
+                'transactions': [{
+                    'id': t.id,
+                    'transaction_date': format_date(t.transaction_date),
+                    'order_no': t.order_no,
+                    'transaction_type': t.transaction_type,
+                    'amount': float(t.amount) if t.amount else 0,
+                    'payment_mode': t.payment_mode,
+                    'reference_no': t.reference_no,
+                    'description': t.description,
+                    'notes': t.notes,
+                    'source': t.source
+                } for t in transactions.items],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'pages': transactions.pages
+                }
+            })
+        except Exception as e:
+            app.logger.error(f"Error getting transactions: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @app.route('/customers/<customer_code>', methods=['GET'])
@@ -112,72 +248,6 @@ def init_routes(app):
                 'registration_source': customer.registration_source,
                 'created_at': customer.created_at.isoformat() if customer.created_at else None
             }), 200
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    @app.route('/orders', methods=['GET'])
-    def get_orders():
-        try:
-            # Get query parameters
-            customer_id = request.args.get('customer_id')
-            status = request.args.get('status')
-            start_date = request.args.get('start_date')
-            end_date = request.args.get('end_date')
-            
-            # Start with base query including customer join
-            query = db.session.query(Sales, Customer).join(Customer)
-            
-            # Apply filters if provided
-            if customer_id:
-                query = query.filter(Sales.customer_id == customer_id)
-            if status:
-                query = query.filter(Sales.order_status == status)
-            if start_date:
-                query = query.filter(Sales.order_date >= datetime.strptime(start_date, '%Y-%m-%d'))
-            if end_date:
-                query = query.filter(Sales.order_date <= datetime.strptime(end_date, '%Y-%m-%d'))
-            
-            # Execute query
-            results = query.all()
-            
-            return jsonify([{
-                'order_no': order.order_no,
-                'customer_id': order.customer_id,
-                'customer_name': customer.name,  # Include customer name
-                'order_date': order.order_date.isoformat() if order.order_date else None,
-                'due_date': order.due_date.isoformat() if order.due_date else None,
-                'last_activity': order.last_activity.isoformat() if order.last_activity else None,
-                'pieces': order.pieces,
-                'weight': order.weight,
-                'gross_amount': order.gross_amount,
-                'discount': order.discount,
-                'tax': order.tax,
-                'net_amount': order.net_amount,
-                'advance': order.advance,
-                'paid': order.paid,
-                'adjustment': order.adjustment,
-                'balance': order.balance,
-                'advance_received': order.advance_received,
-                'advance_used': order.advance_used,
-                'booked_by': order.booked_by,
-                'workshop_note': order.workshop_note,
-                'order_note': order.order_note,
-                'home_delivery': order.home_delivery,
-                'garments_inspected_by': order.garments_inspected_by,
-                'order_from_pos': order.order_from_pos,
-                'package': order.package,
-                'package_type': order.package_type,
-                'package_name': order.package_name,
-                'feedback': order.feedback,
-                'tags': order.tags,
-                'comment': order.comment,
-                'primary_services': order.primary_services,
-                'topup_service': order.topup_service,
-                'order_status': order.order_status,
-                'last_payment_activity': order.last_payment_activity.isoformat() if order.last_payment_activity else None,
-                'coupon_code': order.coupon_code,
-                'created_at': order.created_at.isoformat() if order.created_at else None
-            } for order, customer in results]), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
@@ -288,22 +358,6 @@ def init_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': str(e)}), 400 
-
-    @app.route('/transactions')
-    def get_transactions():
-        transactions = Accounts.query.order_by(Accounts.transaction_date.desc()).all()
-        return jsonify([{
-            'id': txn.id,
-            'transaction_date': txn.transaction_date,
-            'order_no': txn.order_no,
-            'transaction_type': txn.transaction_type,
-            'amount': float(txn.amount) if txn.amount else 0,
-            'payment_mode': txn.payment_mode,
-            'reference_no': txn.reference_no,
-            'description': txn.description,
-            'notes': txn.notes,
-            'source': txn.source
-        } for txn in transactions])
 
     @app.route('/admin')
     @login_required
@@ -724,30 +778,33 @@ def init_routes(app):
             db.session.rollback()
             return jsonify({'error': str(e)}), 500 
 
-    @app.route('/api/transactions/export/manual', methods=['GET'])
+    @app.route('/api/transactions/export/manual')
     @admin_required
     def export_manual_transactions():
         try:
+            app.logger.info("Starting manual transactions export")
+            
             # Get all manual transactions
             transactions = Accounts.query.filter_by(source='manual').order_by(Accounts.transaction_date.desc()).all()
+            app.logger.info(f"Found {len(transactions)} manual transactions")
             
-            # Create CSV in memory
-            output = StringIO()
-            writer = csv.writer(output)
+            # Create string buffer first
+            string_buffer = StringIO()
+            writer = csv.writer(string_buffer)
             
             # Write headers
             writer.writerow([
                 'Date', 
                 'Order No', 
-                'Type', 
-                'Amount', 
-                'Payment Mode', 
+                'Transaction Type',
+                'Amount',
+                'Payment Mode',
                 'Reference No',
                 'Description',
                 'Notes'
             ])
             
-            # Write data
+            # Write transaction data
             for txn in transactions:
                 writer.writerow([
                     txn.transaction_date.strftime('%Y-%m-%d') if txn.transaction_date else '',
@@ -760,9 +817,15 @@ def init_routes(app):
                     txn.notes or ''
                 ])
             
-            # Prepare response
-            output.seek(0)  # Return to start of file
-            filename = f"manual_transactions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            # Convert to bytes for sending
+            output = BytesIO()
+            output.write(string_buffer.getvalue().encode('utf-8'))
+            output.seek(0)
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'manual_transactions_{timestamp}.csv'
+            
+            app.logger.info(f"Preparing to send file: {filename}")
             
             return send_file(
                 output,
@@ -772,8 +835,12 @@ def init_routes(app):
             )
             
         except Exception as e:
-            print(f"Export error: {str(e)}")  # Add debug logging
-            return jsonify({'error': str(e)}), 500 
+            app.logger.error(f"Export failed: {str(e)}")
+            app.logger.exception("Full traceback:")
+            return jsonify({
+                'error': str(e),
+                'details': 'Check server logs for more information'
+            }), 500 
 
     @app.route('/employees')
     @login_required
@@ -823,3 +890,140 @@ def init_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': str(e)}), 400 
+
+    @app.route('/api/accounting/stats')
+    def get_accounting_stats():
+        try:
+            # Get today's date range
+            today = datetime.now().date()
+            today_start = datetime.combine(today, datetime.min.time())
+            today_end = datetime.combine(today, datetime.max.time())
+
+            # Get month's date range
+            month_start = today.replace(day=1)
+            month_end = today_end
+
+            # Get today's transactions
+            today_transactions = Accounts.query.filter(
+                Accounts.transaction_date.between(today_start, today_end)
+            ).all()
+
+            # Get month's transactions
+            month_transactions = Accounts.query.filter(
+                Accounts.transaction_date.between(month_start, month_end)
+            ).all()
+
+            # Calculate today's stats
+            today_income = sum(t.amount for t in today_transactions if t.transaction_type == 'Income')
+            today_expenses = sum(t.amount for t in today_transactions if t.transaction_type == 'Expense')
+
+            # Calculate month's stats
+            month_income = sum(t.amount for t in month_transactions if t.transaction_type == 'Income')
+            month_expenses = sum(t.amount for t in month_transactions if t.transaction_type == 'Expense')
+
+            return jsonify({
+                'today': {
+                    'income': float(today_income),
+                    'expenses': float(today_expenses),
+                    'transactions': len(today_transactions)
+                },
+                'month': {
+                    'income': float(month_income),
+                    'expenses': float(month_expenses),
+                    'transactions': len(month_transactions)
+                }
+            })
+
+        except Exception as e:
+            app.logger.error(f"Error getting accounting stats: {str(e)}")
+            app.logger.exception("Full traceback:")
+            return jsonify({
+                'error': str(e),
+                'details': 'Check server logs for more information'
+            }), 500 
+
+    @app.route('/api/daily-balance', methods=['GET'])
+    def get_daily_balance():
+        try:
+            date = request.args.get('date')
+            if date:
+                date = datetime.strptime(date, '%Y-%m-%d').date()
+            else:
+                date = datetime.now().date()
+            
+            balance = DailyBalance.query.filter_by(date=date).first()
+            
+            if balance:
+                return jsonify({
+                    'date': balance.date.isoformat(),
+                    'bank_balance': float(balance.bank_balance),
+                    'cash_in_hand': float(balance.cash_in_hand),
+                    'notes': balance.notes,
+                    'verified_by': balance.verified_by
+                })
+            else:
+                return jsonify({
+                    'date': date.isoformat(),
+                    'bank_balance': 0.0,
+                    'cash_in_hand': 0.0,
+                    'notes': '',
+                    'verified_by': ''
+                })
+            
+        except Exception as e:
+            app.logger.error(f"Error getting daily balance: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/daily-balance', methods=['POST'])
+    @admin_required
+    def add_daily_balance():
+        try:
+            data = request.json
+            date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            
+            # Check if entry exists for this date
+            balance = DailyBalance.query.filter_by(date=date).first()
+            
+            if balance:
+                # Update existing
+                balance.bank_balance = data['bank_balance']
+                balance.cash_in_hand = data['cash_in_hand']
+                balance.notes = data.get('notes', '')
+                balance.verified_by = data.get('verified_by', '')
+            else:
+                # Create new
+                balance = DailyBalance(
+                    date=date,
+                    bank_balance=data['bank_balance'],
+                    cash_in_hand=data['cash_in_hand'],
+                    notes=data.get('notes', ''),
+                    verified_by=data.get('verified_by', '')
+                )
+                db.session.add(balance)
+            
+            db.session.commit()
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error adding daily balance: {str(e)}")
+            return jsonify({'error': str(e)}), 500 
+
+    @app.route('/api/transactions/bulk-delete', methods=['POST'])
+    @login_required
+    def bulk_delete_transactions():
+        try:
+            data = request.get_json()
+            if not data or 'ids' not in data:
+                return jsonify({'error': 'No transaction IDs provided'}), 400
+            
+            # Delete transactions
+            Accounts.query.filter(Accounts.id.in_(data['ids'])).delete(synchronize_session=False)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'message': f"Deleted {len(data['ids'])} transactions"})
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error deleting transactions: {str(e)}")
+            return jsonify({'error': str(e)}), 500 
