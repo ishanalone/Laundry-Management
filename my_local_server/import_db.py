@@ -1,32 +1,64 @@
 import sqlite3
 import os
 
-def import_db():
-    # Destination database path
-    dest_db = "instance/database.db"
-    # Backup file path
-    backup_file = "database_backup.sql"
-    
+def import_database():
     try:
-        # Remove destination db if it exists
-        if os.path.exists(dest_db):
-            os.remove(dest_db)
+        # Get the absolute path to the database file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        instance_dir = os.path.join(current_dir, 'instance')
+        db_path = os.path.join(instance_dir, 'database.db')
+        backup_path = os.path.join(current_dir, 'database_backup.sql')
         
-        # Connect to new database
-        conn = sqlite3.connect(dest_db)
+        # Create instance directory if it doesn't exist
+        os.makedirs(instance_dir, exist_ok=True)
         
-        # Read and execute the SQL script
-        with open(backup_file, 'r') as f:
-            sql_script = f.read()
-            conn.executescript(sql_script)
+        # Connect to the database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
         
+        # Read the SQL file with error handling for different encodings
+        encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+        sql_commands = None
+        
+        for encoding in encodings_to_try:
+            try:
+                with open(backup_path, 'r', encoding=encoding) as f:
+                    sql_commands = f.read()
+                break  # If successful, break the loop
+            except UnicodeDecodeError:
+                continue
+        
+        if sql_commands is None:
+            raise Exception("Could not decode the SQL file with any of the attempted encodings")
+        
+        # Split and execute commands
+        # Split on semicolon but ignore semicolons inside quotes
+        import re
+        commands = re.split(r';(?=(?:[^\']*\'[^\']*\')*[^\']*$)', sql_commands)
+        
+        for command in commands:
+            command = command.strip()
+            if command:
+                try:
+                    cursor.execute(command)
+                except sqlite3.Error as e:
+                    print(f"Error executing command: {command[:100]}...")
+                    print(f"Error message: {str(e)}")
+                    continue
+        
+        # Commit changes and close connection
         conn.commit()
-        print(f"Database successfully imported to {dest_db}")
+        conn.close()
+        
+        print(f"Database successfully imported to {db_path}")
+        return db_path
         
     except Exception as e:
-        print(f"Error importing database: {str(e)}")
-    finally:
-        conn.close()
+        raise Exception(f"Error importing database: {str(e)}")
 
 if __name__ == "__main__":
-    import_db() 
+    try:
+        db_path = import_database()
+        print(f"Database path: {db_path}")
+    except Exception as e:
+        print(f"Error: {str(e)}") 
