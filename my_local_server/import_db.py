@@ -3,7 +3,7 @@ import os
 
 def import_db():
     # Destination database path
-    dest_db = "path/to/new/location/database.db"
+    dest_db = "instance/database.db"
     # Backup file path
     backup_file = "database_backup.sql"
     
