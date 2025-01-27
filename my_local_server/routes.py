@@ -1,4 +1,4 @@
-from flask import jsonify, request, send_from_directory, render_template, session, redirect, url_for, send_file
+from flask import jsonify, request, send_from_directory, render_template, session, redirect, url_for, send_file, current_app
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
 from models import Customer, Sales, Accounts, User, Employee, DailyBalance
@@ -12,16 +12,20 @@ from constants import (
 )
 from functools import wraps
 from services.whatsapp_service import WhatsAppService
-from services.accounting_ai_service import AccountingAIAgent
+from accounting_agent import AccountingAgent
 import csv
 from io import BytesIO, StringIO
 import pandas as pd
+import os
+from flask_cors import CORS
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            # Store the original target URL in session
+            session['next'] = request.url
+            return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -34,6 +38,9 @@ def admin_required(f):
     return decorated_function
 
 def init_routes(app):
+    # Enable CORS
+    CORS(app)
+
     @app.route('/login', methods=['GET', 'POST'])
     def login():
         if request.method == 'POST':
@@ -51,6 +58,11 @@ def init_routes(app):
                 user.last_login = datetime.utcnow()
                 db.session.commit()
                 
+                # Redirect to original page if it exists
+                next_page = session.get('next')
+                if next_page:
+                    session.pop('next', None)
+                    return redirect(next_page)
                 return redirect(url_for('index'))
             
             return render_template('login.html', error='Invalid credentials')
@@ -686,6 +698,24 @@ def init_routes(app):
             return 'Invalid verification token', 403
         return 'Invalid request', 400
 
+    def handle_incoming_message(message):
+        try:
+            # Extract message details
+            message_id = message.get('id')
+            from_number = message.get('from')
+            text = message.get('text', {}).get('body', '')
+            
+            # Log the incoming message
+            current_app.logger.info(f"Received message: {text} from {from_number}")
+            
+            # Here you can add your message handling logic
+            # For now, we'll just acknowledge receipt
+            return True
+            
+        except Exception as e:
+            current_app.logger.error(f"Error handling message: {str(e)}")
+            return False
+
     @app.route('/webhook', methods=['POST'])
     def webhook():
         try:
@@ -705,23 +735,25 @@ def init_routes(app):
     @app.route('/api/accounting/insights', methods=['GET'])
     def get_accounting_insights():
         try:
+            # Initialize accounting agent
+            db_path = os.path.join(current_app.root_path, 'instance', 'database.db')
+            agent = AccountingAgent(db_path=db_path)
+            
             days = request.args.get('days', default=7, type=int)
             analysis_type = request.args.get('type', default='daily', type=str)
-            date = request.args.get('date', type=str)  # Format: YYYY-MM-DD
             
-            ai_agent = AccountingAIAgent()
+            # Format question based on analysis type
+            if analysis_type == 'monthly':
+                # Convert days to months (approximate)
+                months = max(1, days // 30)
+                question = f"Analyze transactions for the past {months} months"
+            elif analysis_type == 'weekly':
+                weeks = max(1, days // 7)
+                question = f"Analyze transactions for the past {weeks} weeks"
+            else:  # daily
+                question = f"Analyze daily transactions for the past {days} days"
             
-            if analysis_type == 'daily':
-                insights = ai_agent.get_daily_summary(days)
-            elif analysis_type == 'monthly':
-                months = days // 30
-                insights = ai_agent.get_monthly_analysis(months)
-            elif analysis_type == 'anomalies':
-                insights = ai_agent.detect_anomalies(days)
-            elif analysis_type == 'balance_sheet':
-                insights = ai_agent.get_daily_balance_sheet(date)
-            else:
-                return jsonify({'error': 'Invalid analysis type'}), 400
+            insights = agent.analyze_financial_data(question)
             
             return jsonify({
                 'success': True,
@@ -729,7 +761,7 @@ def init_routes(app):
             })
             
         except Exception as e:
-            return jsonify({'error': str(e)}), 500 
+            return jsonify({'error': str(e)}), 500
 
     @app.route('/api/transactions/<int:id>', methods=['DELETE'])
     @admin_required
@@ -1027,3 +1059,40 @@ def init_routes(app):
             db.session.rollback()
             app.logger.error(f"Error deleting transactions: {str(e)}")
             return jsonify({'error': str(e)}), 500 
+
+    @app.route('/api/chat/accounting', methods=['POST'])
+    @login_required
+    def accounting_chat():
+        try:
+            data = request.get_json()
+            message = data.get('message')
+            conversation_history = data.get('history', [])
+            
+            if not message:
+                return jsonify({'error': 'No message provided'}), 400
+            
+            # Initialize accounting agent
+            db_path = os.path.join(current_app.root_path, 'instance', 'database.db')
+            agent = AccountingAgent(db_path=db_path)
+            
+            response = agent.process_chat_message(message, conversation_history)
+            return jsonify(response)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/accounting/schema', methods=['GET'])
+    @login_required
+    def get_schema():
+        try:
+            db_path = os.path.join(current_app.root_path, 'instance', 'database.db')
+            agent = AccountingAgent(db_path=db_path)
+            schema = agent.get_table_schema()
+            return jsonify({'schema': schema})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/accounting-chat')
+    @login_required
+    def accounting_chat_page():
+        return render_template('accounting_chat.html')
